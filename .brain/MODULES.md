@@ -14,7 +14,7 @@
 | M10 | Proxy app programs (start commands, approval) | MVP | backend + frontend | M5 | done |
 | M11 | Docker apps | MVP | backend + frontend | M5 | done |
 | M12 | AI routers (OmniRoute, 9router) and Codex config | MVP | backend + frontend | M8 | done |
-| M13 | Tailnet: per-port mode and Tailscale Services | MVP | backend + frontend | M5 | doing |
+| M13 | Tailnet: per-port mode and Tailscale Services | MVP | backend + frontend | M5 | done |
 | M14 | Studio: file tree, CodeMirror editor, formatters, file icons | MVP | backend + frontend | M5 | done |
 | M15 | Studio: terminals (Claude Code, Codex, PowerShell) | MVP | backend + frontend | M14 | done |
 | M16 | Studio: Claude Code chat, palette, history | MVP | backend + frontend | M15 | doing |
@@ -31,7 +31,7 @@ there (`apache_e2e`, `sites_e2e`, `nginx_e2e`, `php_e2e`, `db_e2e`, `languages_e
 ### M13 tailnet: per-port mode and Tailscale Services
 Accept: port mode answers `http://<pc>:<port>` from another tailnet device; a Service answers `https://<svc>.<tailnet>.ts.net` with a valid
 certificate; another app's Service name is refused. Test: `tailnet_e2e` (both cases, real Apache/Nginx/FrankenPHP; passed 2026-11-09);
-open: a real Service from another device (needs the tag, policy and Service in the Tailscale admin console).
+Real Service proven 2026-11-09: `svc:vaultwarden` opened from another tailnet device by the boss ("oke bisa").
 
 ### M14-M15 Studio editor and terminals
 Accept: files confined to the project root, save refuses outside changes, formatters per language, terminals end with their window.

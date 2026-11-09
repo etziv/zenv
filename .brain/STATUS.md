@@ -12,12 +12,11 @@ Updated: 2026-11-09
 - Vaultwarden on the tailnet: done 2026-11-09 through the Tailscale API (the boss allowed it, "aku izinkan"): policy has `tag:server`,
   autoApprovers `svc:vaultwarden`, grant members -> svc:vaultwarden:443; Service `svc:vaultwarden` (tcp:443) defined; this PC tagged `tag:server`;
   `D:\Hanif\vaultwarden\docker-compose.yml` DOMAIN = `https://vaultwarden.caracal-alnair.ts.net`, container recreated.
-  Opened in Zenv 2026-11-09 (loopback 9001; Service host `approved:auto`, `ready`; DNS -> 100.101.202.251). From this PC the URL times out
-  (it is tagged, so not `autogroup:member` in the grant). Left: open it from another device; `SIGNUPS_ALLOWED` false after signup.
+  Opened in Zenv 2026-11-09 (loopback 9001; Service host `approved:auto`, `ready`); the boss opened it from another device ("oke bisa").
+  From this PC the URL times out (tagged, so not `autogroup:member` in the grant); use `vaultwarden.localhost` here. `SIGNUPS_ALLOWED` false (1 account).
 - Studio chat: an end-to-end run in the Studio window (palette terminal screens, paste from Explorer, MCP toggle).
 
 ## Open issues
-- Tailscale Services not yet proven against the real tailnet (M13).
 - Possible bug (found by qa 2026-11-09, unfixed): `ServiceManager.running_rivals` also returns non-web services, so `Core.start_service`
   can pick a database on the same port as a web server's front (`rivals.first()`); the front then forwards nothing. Only when a database shares the web port.
 - No automated test for the tray panel (M18).
