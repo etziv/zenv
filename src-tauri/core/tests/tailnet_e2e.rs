@@ -241,3 +241,43 @@ fn apps_behind_another_server_answer_on_the_tailnet() {
         core.shutdown();
     }
 }
+
+/// A re-rolled tailnet name (or renamed PC): the saved names are stale, so the
+/// real Service name is refused until `follow_tailnet_names` serves it.
+#[test]
+#[ignore = "requires ZENV_TEST_NGINX_ROOT and Tailscale running"]
+fn renamed_tailnet_names_are_followed() {
+    let real = zenv_core::tailnet::status();
+    assert!(real.online, "Tailscale must be running: {:?}", real.problem);
+    let data = tempfile::tempdir().unwrap();
+    let projects = tempfile::tempdir().unwrap();
+    let core = Core::initialize(AppPaths::new(data.path())).unwrap();
+    let nginx = runtime_manager::register(&core.db, ComponentId::Nginx, Path::new(&std::env::var("ZENV_TEST_NGINX_ROOT").expect("set ZENV_TEST_NGINX_ROOT"))).unwrap();
+    let port = port_manager::suggest_free_port().unwrap();
+    let svc = core
+        .services
+        .create(&ServiceInput { name: "web".into(), installation_id: nginx.id, listen_address: "127.0.0.1".into(), http_port: port, autostart: false, data_dir: None, https_port: None })
+        .unwrap();
+    let app = site(&core, &svc.id, "renamed.localhost", projects.path(), Strategy::ReverseProxy, None, Some(spawn_program()));
+    let tailnet = port_manager::suggest_free_port().unwrap();
+    core.db
+        .write(|tx| {
+            tx.execute("INSERT INTO tailnet_apps (site_id, port, service, created_at) VALUES (?1, ?2, 'svcrename', 't')", rusqlite::params![app.site.id, tailnet])?;
+            Ok(())
+        })
+        .unwrap();
+    save_names(&core); // the old tailnet's names
+    core.start_service(&svc.id).unwrap();
+
+    let name = zenv_core::tailnet::service_name("svcrename", &zenv_core::tailnet::hosts_of(&real)).expect("a .ts.net name");
+    let before = get(tailnet, &name);
+    let code = before.split_whitespace().nth(1).unwrap_or("");
+    assert!(code == "421" || code == "403", "{name} before the names were followed: the host filter must refuse it: {before}");
+    core.follow_tailnet_names().unwrap();
+    let r = get(tailnet, &name);
+    assert!(r.contains("program host=") && r.contains(&name), "{name} after follow_tailnet_names: {r}");
+    assert!(!get(tailnet, "svcrename.tail1234.ts.net").contains("program host="), "the old tailnet's name still answers");
+    println!("renamed tailnet: {name} answers after follow_tailnet_names");
+    core.services.stop(&svc.id).unwrap();
+    core.shutdown();
+}

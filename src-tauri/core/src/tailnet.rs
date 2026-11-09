@@ -299,16 +299,32 @@ impl Core {
             Ok(rows.collect::<Result<Vec<_>, _>>()?)
         })?;
         let st = status();
-        if !rows.is_empty() && st.online && hosts_of(&st) != known_hosts(&self.db) {
-            // The names changed (renamed device, new tailnet): serve the new ones.
-            remember_hosts(&self.db, &st);
+        if !rows.is_empty() {
+            self.follow_names(&st)?;
+        }
+        Ok(rows.into_iter().map(|(id, port, service)| app(&id, port, service, &st)).collect())
+    }
+
+    /// Serves this computer's current tailnet names when they changed (renamed
+    /// device, re-rolled tailnet name); runs in the background while apps are open.
+    pub fn follow_tailnet_names(&self) -> AppResult<()> {
+        let open: i64 = self.db.read(|c| Ok(c.query_row("SELECT COUNT(*) FROM tailnet_apps", [], |r| r.get(0))?))?;
+        if open > 0 {
+            self.follow_names(&status())?;
+        }
+        Ok(())
+    }
+
+    fn follow_names(&self, st: &TailnetStatus) -> AppResult<()> {
+        if st.online && hosts_of(st) != known_hosts(&self.db) {
+            remember_hosts(&self.db, st);
             for id in self.services.web_servers()?.into_iter().map(|s| s.id) {
                 if let Err(e) = self.sites.reapply(&id) {
                     tracing::warn!(service = %id, error = %e, "tailnet names not applied");
                 }
             }
         }
-        Ok(rows.into_iter().map(|(id, port, service)| app(&id, port, service, &st)).collect())
+        Ok(())
     }
 
     /// Web servers whose configuration includes `site_id` (re-applied after a change).

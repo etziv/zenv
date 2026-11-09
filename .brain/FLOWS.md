@@ -62,5 +62,8 @@ Trigger: Open on tailnet in the app panel (`TailnetPanel`), optionally with an o
    port accepts only this computer's names and the app's Service name (`hosts_for`).
 3. `tailscale serve --tcp=<port>` (port mode) or `tailscale serve --service=svc:<name> --https=443` to that port.
 4. `Core.tailnet_close` undoes it (`serve clear svc:<name>` or `--tcp=<port> off`) and re-applies.
+5. Renamed PC or re-rolled tailnet name: `Core.follow_tailnet_names` (thread `tailnet-names` in `lib.rs`, every 60 s, and on each
+   `tailnet_apps` read) saves the new names and re-applies the web servers; nothing runs while no app is open or Tailscale is offline.
 History:
 - 2026-11-09 adopted
+- 2026-11-09 task 3: names followed in the background, not only when the tailnet panel is open

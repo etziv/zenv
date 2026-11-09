@@ -34,7 +34,19 @@ pub fn run() {
             app.manage(core.clone());
             tray::install(app.handle(), core.clone())?;
             let updater = core.clone();
+            let tailnet = Arc::downgrade(&core);
             std::thread::spawn(move || core.start_autostart_services());
+            // A re-rolled tailnet name or renamed PC is served without opening the tailnet panel.
+            std::thread::Builder::new()
+                .name("tailnet-names".into())
+                .spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_secs(60));
+                    let Some(core) = tailnet.upgrade() else { return };
+                    if let Err(e) = core.follow_tailnet_names() {
+                        tracing::warn!(error = %e, "tailnet names not followed");
+                    }
+                })
+                .ok();
             // AI router auto-update (OmniRoute, 9router): shortly after start,
             // then every six hours.
             std::thread::Builder::new()

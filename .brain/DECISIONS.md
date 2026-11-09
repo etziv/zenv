@@ -65,4 +65,5 @@ G-004 2026-11-06 Do not close the boss's running Zenv to install a build: check 
 G-005 2026-11-09 Do not filter Claude transcript entries by type before walking `parentUuid`: `attachment` entries are links in the chain (`transcript_lines`).
 G-006 2026-11-06 Do not run Vitest while a cargo build runs: its workers time out ("Timeout waiting for worker"); run it afterwards.
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
+G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).

@@ -11,7 +11,8 @@ Updated: 2026-11-09
 ## Next steps
 - Vaultwarden on the tailnet: done 2026-11-09 through the Tailscale API (the boss allowed it, "aku izinkan"): policy has `tag:server`,
   autoApprovers `svc:vaultwarden`, grant members -> svc:vaultwarden:443; Service `svc:vaultwarden` (tcp:443) defined; this PC tagged `tag:server`;
-  `D:\Hanif\vaultwarden\docker-compose.yml` DOMAIN = `https://vaultwarden.caracal-alnair.ts.net`, container recreated.
+  `D:\Hanif\vaultwarden\docker-compose.yml` DOMAIN = `https://vaultwarden.${TAILNET}`, TAILNET in `.env` written by `sync-domain.ps1` there
+  (follows a re-rolled tailnet name; task 3). Its scheduled task "Vaultwarden tailnet domain" is registered by the boss (auto mode refused it).
   Opened in Zenv 2026-11-09 (loopback 9001; Service host `approved:auto`, `ready`); the boss opened it from another device ("oke bisa").
   From this PC the URL times out (tagged, so not `autogroup:member` in the grant); use `vaultwarden.localhost` here. `SIGNUPS_ALLOWED` false (1 account).
 - Studio chat: an end-to-end run in the Studio window (palette terminal screens, paste from Explorer, MCP toggle).
