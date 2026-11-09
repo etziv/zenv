@@ -12,7 +12,8 @@ Updated: 2026-11-09
 - Vaultwarden on the tailnet: done 2026-11-09 through the Tailscale API (the boss allowed it, "aku izinkan"): policy has `tag:server`,
   autoApprovers `svc:vaultwarden`, grant members -> svc:vaultwarden:443; Service `svc:vaultwarden` (tcp:443) defined; this PC tagged `tag:server`;
   `D:\Hanif\vaultwarden\docker-compose.yml` DOMAIN = `https://vaultwarden.${TAILNET}`, TAILNET in `.env` written by `sync-domain.ps1` there
-  (follows a re-rolled tailnet name; task 3). Its scheduled task "Vaultwarden tailnet domain" is registered by the boss (auto mode refused it).
+  (follows a re-rolled tailnet name; task 3). Scheduled task "Vaultwarden tailnet domain" (logon + every 15 min) registered 2026-11-09 with the boss's OK;
+  proven: a stale TAILNET was restored by the task itself (sync-domain.log 15:47, result 0).
   Opened in Zenv 2026-11-09 (loopback 9001; Service host `approved:auto`, `ready`); the boss opened it from another device ("oke bisa").
   From this PC the URL times out (tagged, so not `autogroup:member` in the grant); use `vaultwarden.localhost` here. `SIGNUPS_ALLOWED` false (1 account).
 - Studio chat: an end-to-end run in the Studio window (palette terminal screens, paste from Explorer, MCP toggle).
@@ -23,5 +24,6 @@ Updated: 2026-11-09
 - No automated test for the tray panel (M18).
 - 2026-11-09: Start MySQL 9.7 failed "port 3306 in use by mysqld.exe": Zenv's own mysqld (same `--defaults-file`, started 2026-11-06,
   parent process gone) outlived its Zenv; shut down with `mysqladmin shutdown`. Likely cause: started by hand from a Claude shell, not by Zenv:
-  a second leftover, MySQL 8.0 on 3307 (`eda3640f…` my.ini), was started 2026-11-06 13:28 by a Claude Code bash command (its parent). Still running.
+  a second leftover, MySQL 8.0 on 3307 (`eda3640f…` my.ini), was started 2026-11-06 13:28 by a Claude Code bash command (its parent): the ebphtbv3 project's test database (`ebphtb_v3_*_test`).
+  Shut down 2026-11-09 (`mysqladmin shutdown`, 0 clients); the boss: "nyalakan lagi lewat zenv" (Zenv service "MySQL 8.0").
 - Code signing / self-update for a public release undecided (BRIEF open questions).
