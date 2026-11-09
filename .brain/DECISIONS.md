@@ -57,7 +57,7 @@ Decision: only the SVGs mapped in `fileIcons.ts` are copied to `public/file-icon
 Decision: an app may be a Service (`https://<svc>.<tailnet>.ts.net`, migration 0014); the port mode stays. Needs a tagged host, HTTPS
 certificates and the Service defined in the admin console. Source: the boss, 2026-11-09 ("coba tailscale service tambahkan").
 
-## D-016 Private GitHub repo etziv/zenv, release mode merge, version 1.0.0 [active] 2026-11-09
+## D-016 Private GitHub repo etziv/zenv, release mode merge, version 1.0.0 [superseded by D-019] 2026-11-09
 Decision: code lives in private `etziv/zenv`; every ship pushes, opens a PR and squash-merges into `main`; the app is version 1.0.0.
 Source: the boss, 2026-11-09 ("buat dan versi sekarang adalah versi 1"); task 6.
 
@@ -68,6 +68,10 @@ in a PROPOSAL card). Source: the boss, 2026-11-09 ("gunakan token read untuk upd
 ## D-018 No self-update for now [active] 2026-11-09
 Decision: Zenv has no self-update; builds are installed by hand (D-009). Options weighed for later: token in the exe (only obscured),
 DPAPI token pasted once, a public releases repo. Source: the boss, 2026-11-09 ("self update tidak perlu dulu deh, pikir nanti").
+
+## D-019 Public GitHub repo etziv/zenv, release mode merge, version 1.0.0 [active] 2026-11-09
+Decision: `etziv/zenv` is public (full history; scanned for secrets first: none); every ship pushes, opens a PR, squash-merges into main.
+Source: the boss, 2026-11-09 ("repo buat publik aja dulu"), after D-016. No license file yet (all rights reserved by default).
 
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
