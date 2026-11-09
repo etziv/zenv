@@ -72,6 +72,7 @@ DPAPI token pasted once, a public releases repo. Source: the boss, 2026-11-09 ("
 ## D-019 Public GitHub repo etziv/zenv, release mode merge, version 1.0.0 [active] 2026-11-09
 Decision: `etziv/zenv` is public (full history; scanned for secrets first: none); every ship pushes, opens a PR, squash-merges into main.
 Source: the boss, 2026-11-09 ("repo buat publik aja dulu"), after D-016. No license file yet (all rights reserved by default).
+Installers are GitHub Releases (`v1.0.0` = Zenv-1.0.0-setup.exe, 2026-11-09, the boss: "izinkan").
 
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
