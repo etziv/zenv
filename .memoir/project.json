@@ -4,8 +4,10 @@
   "mergeMethod": "squash",
   "ciWaitMinutes": 5,
   "verify": [
-    { "name": "build", "run": "" },
-    { "name": "lint", "run": "" },
-    { "name": "test", "run": "" }
+    { "name": "build", "run": "npm run build" },
+    { "name": "build-rust", "run": "node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml" },
+    { "name": "lint", "run": "npm run typecheck" },
+    { "name": "test", "run": "npm test" },
+    { "name": "test-rust", "run": "npm run test:rust" }
   ]
 }
