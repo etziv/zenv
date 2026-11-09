@@ -14,7 +14,7 @@ takes many minutes and a 15-screen proposal takes hours. This skill builds the w
 in one call (7,000+ layers in seconds), then uses a handful of batched commands for what JSON cannot carry.
 
 **This skill is the how, not the look.** Before the first screen: the `design` skill's "Before ANY drawing" gate
-(`.memoir/design/proposal/research.md` passes `library.mjs check`; every screen's components come from the library entries it names), then the `design` skill (for app screens
+(`.brain/design/proposal/research.md` passes `library.mjs check`; every screen's components come from the library entries it names), then the `design` skill (for app screens
 `references/app-screens.md` whole: give the product a face, house rules, tells) and the `figcraft-design` quality
 bar. A fast build of a generic layout is still generic: the boss rejected exactly that ("terlalu generic dan kaku").
 
@@ -32,12 +32,12 @@ bar. A fast build of a generic layout is still generic: the boss rejected exactl
 ## 1. Live mode (the boss watches the app window)
 `.mcp.json` runs `node .claude/scripts/figcraft-mcp.mjs`. The window opens only when a figcraft tool is first USED:
 until then a headless figcraft-cli answers the handshake and the tool list (no window). The first tool call starts
-`figcraft.exe --control 7777` (`FIGCRAFT_PORT`) with the repo as read root and `.memoir/design` as write root
+`figcraft.exe --control 7777` (`FIGCRAFT_PORT`) with the repo as read root and `.brain/design` as write root
 (detached: the app outlives the session) when nothing listens there, attaches to it (about 3 s) and sends every later
 call to that window; an app already open on the port is attached at session start. Nothing to start by hand.
 The app cannot start -> the wrapper says so on stderr and the tools keep working headless (no window).
 - Attached mode refuses roots on the CLI, so the app on the port keeps the roots it was opened with: an app opened
-  by ANOTHER project writes only under that project's `.memoir/design`. A save refused for its root -> ask the boss
+  by ANOTHER project writes only under that project's `.brain/design`. A save refused for its root -> ask the boss
   to close FigCraft, then `/mcp -> figcraft -> Reconnect`.
 - Installed elsewhere: user env `FIGCRAFT_CLI=<dir>/figcraft-cli.exe` (`figcraft.exe` is taken from the same folder).
 - Probe without the session: pipe an MCP `initialize` JSON line into `node .claude/scripts/figcraft-mcp.mjs`; it
@@ -72,14 +72,14 @@ The order is fixed (boss 2026-11-03): 1) the research pack passes `library.mjs c
 screen the pack lists, each in its default, empty, loading and error state; 3) `figlive.mjs` executes the whole plan
 in ONE run (no model round-trip per step), live so the boss watches. figlive enforces 1 and 2: it refuses to build
 otherwise and prints what is missing.
-- `node scripts/figlive.mjs .memoir/design/proposal/build-plan.json --check`: the gate only; fix until it prints `plan ok`.
+- `node scripts/figlive.mjs .brain/design/proposal/build-plan.json --check`: the gate only; fix until it prints `plan ok`.
 - `node scripts/figlive.mjs <plan> --live`: hosts a live session on this machine, opens a FigCraft window on the
   boss's screen and joins it by itself (no click; `--no-viewer` prints the link only). The agent's cursor glides to
   every part it builds, a chat label beside it says what it is doing, and the view follows (spotlight). 20 frames
   took 5 s at `--pace 0.5`, 61 steps 28 s at `--pace 1`. `--hold 60` keeps the session open after.
 - Without `--live`: fast (61 steps in under 0.1 s), for rebuilds nobody watches.
-- Plan: `{"research": ".memoir/design/proposal/research.md", "app": true (pack checked with --app), "save":
-  ".memoir/design/proposal/proposal.figcraft", "open": "<optional .figcraft or figrest .json>", "steps": [...]}`; a step
+- Plan: `{"research": ".brain/design/proposal/research.md", "app": true (pack checked with --app), "save":
+  ".brain/design/proposal/proposal.figcraft", "open": "<optional .figcraft or figrest .json>", "steps": [...]}`; a step
   is `{"label", "screen": "<### name in the pack>", "state": "empty|loading|error" (none = default), ...}` plus one of
   `"batch": [{command, params, as}]` (any command, `$ref` chaining), `"draw": {"tool": "rectangle", "from": [x,y],
   "to": [x,y]}, "name", "props"` (a real mouse drag), `"text": {"text", "x", "y", "parent", "name"}` or

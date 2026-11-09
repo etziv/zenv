@@ -10,10 +10,10 @@ without them is the generic result the boss rejects ("asal", "terlalu generic da
 full; inside a long reference, read the sections it names.
 
 ## Before ANY drawing (every drawer: the designer, a re-spawned designer or worker for FigCraft, `frontend`)
-1. `.memoir/design/proposal/research.md` exists and `node .claude/skills/design/scripts/library.mjs check
-   .memoir/design/proposal/research.md` (`--app` for app screens) prints `research pack complete`. It does not: do job 0
+1. `.brain/design/proposal/research.md` exists and `node .claude/skills/design/scripts/library.mjs check
+   .brain/design/proposal/research.md` (`--app` for app screens) prints `research pack complete`. It does not: do job 0
    steps 1-6 first; never draw from a blank head, and never skip it because "only FigCraft drawing" is asked.
-2. Read the pack, `.memoir/DESIGN.md` (once a direction is chosen), and `library.mjs show <kind> <id>` for every
+2. Read the pack, `.brain/DESIGN.md` (once a direction is chosen), and `library.mjs show <kind> <id>` for every
    library entry the screen you draw names: its blueprint is the composition you draw.
 3. Then the plan, then the build: FigCraft screens are built from a plan file run by `figcraft-build`'s
    `scripts/figlive.mjs` (section 2b), which refuses a plan that skips the pack or any screen's default, empty,
@@ -36,7 +36,7 @@ sections, 202 studied real sites, motions and the app catalogue (styles, shells,
    (pages) heroes and sections; `show` each pick.
 4. Brands: `brands/_index.md`, then one `brands/<name>.md` (or `none: <reason>`).
 5. UX: 3+ `uiux` catalogue queries (job 4) for the product's concerns and stack.
-6. Write `.memoir/design/proposal/research.md` (format: `references/research-pack.md`) and run `library.mjs check` until it
+6. Write `.brain/design/proposal/research.md` (format: `references/research-pack.md`) and run `library.mjs check` until it
    passes.
 7. Build 2-3 directions from the pack with a WCAG-checked palette (`scripts/palette.mjs`), type, the key screens and
    components, and hand the boss ONE proposal: the key screens in FigCraft (`figcraft-design`, `figcraft-build`) and
@@ -68,7 +68,7 @@ or `--stack <jetpack-compose|laravel|react|html-tailwind|flutter|vue|nextjs|shad
   folder). An empty result: retry once with other words, then say no match was found. Fonts it names are Google
   Fonts: ship them self-hosted (`res/font` on Android, local files on the web), per Safety.
 
-## Writing DESIGN.md (`.memoir/DESIGN.md`, the project's visual memory)
+## Writing DESIGN.md (`.brain/DESIGN.md`, the project's visual memory)
 The outcome of job 0, 1 or 2 is captured there: style, palette (hex + role, light and dark), fonts (display + body + source and licence), spacing/radius/shadows, motion (the tokens and transitions from `references/app-motion.md`), components, signature element, and EVERY MVP screen with its states (empty, loading, error) and the reference it follows. The `frontend` skill builds screens from it. A new look or a redesign goes through job 0 and the boss's choice (the DESIGN card); a small change inside an approved look needs no card.
 
 ## Anti-slop house rules (always)

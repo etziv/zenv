@@ -6,7 +6,7 @@
 //   node library.mjs search "<words>" [--kind <kind>] [--top 8]   one line per match: lib:<kind>/<id>  name - gist
 //   node library.mjs show <kind> <id>                               the full entry
 //   node library.mjs kinds                                          the kinds and their sizes
-//   node library.mjs check .memoir/design/proposal/research.md [--app]   the research pack gate (design SKILL.md)
+//   node library.mjs check .brain/design/proposal/research.md [--app]   the research pack gate (design SKILL.md)
 // kinds: directions palettes type heroes sections sites motions app-styles app-shells app-patterns app-kinds
 import fs from "node:fs";
 import path from "node:path";

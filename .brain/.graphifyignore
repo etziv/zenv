@@ -1,0 +1,6 @@
+# graphify (AST, no LLM). The memory headings here are indexed: a markdown heading becomes a node with its file and line,
+# so `graphify query` can say where a decision, module or contract lives. Temporary memory and tool output stay out
+# (graphify-out/ and playwright-mcp/ are in .gitignore, which graphify also reads; .claude/ has its own `*` ignore).
+handoff/
+archive/
+design/proposal/*.html

@@ -1,6 +1,6 @@
 ---
 name: memory
-description: "Project memory: recall (memory + code graph), brain, flows, the .memoir file rules, dead ends, hygiene. Load BEFORE writing or reorganizing .memoir/, or for recall beyond the commands in CLAUDE.md."
+description: "Project memory: recall (memory + code graph), brain, flows, the .brain file rules, dead ends, hygiene. Load BEFORE writing or reorganizing .brain/, or for recall beyond the commands in CLAUDE.md."
 ---
 
 # Memory
@@ -12,9 +12,9 @@ command is plain Node over local files and exits 0 even when something is missin
 
 | Layer | What | Kept fresh by |
 |---|---|---|
-| Project memory | `.memoir/*.md`, markdown, the source of truth | you (rules below); `compact` + `lint` on every ship |
-| Code graph | graphify AST graph (code AND memory headings) + this skill's type-aware call resolution in `graphify-out/graph.memory.json` | git hook after every commit; the resolution rebuilds itself (under 1 s) when the graph changes |
-| Infra | `.memoir/infra.md`, built from Docker/k8s/Terraform/CI files | every ship (no infra files: no file) |
+| Project memory | `.brain/*.md`, markdown, the source of truth | you (rules below); `compact` + `lint` on every ship |
+| Code graph | graphify AST graph (code AND memory headings) + this skill's type-aware call resolution in `.brain/graphify-out/graph.memory.json` | git hook after every commit; the resolution rebuilds itself (under 1 s) when the graph changes |
+| Infra | `.brain/infra.md`, built from Docker/k8s/Terraform/CI files | every ship (no infra files: no file) |
 | Session | where the last session stopped: files edited, checks run, the boss's last asks | hooks before a compact and at session end |
 
 ## Recall: pick the cheapest command that answers the question
@@ -26,7 +26,7 @@ command is plain Node over local files and exits 0 even when something is missin
 | I know the id (`D-012`, `M3a`, `G-007`) | Grep that heading with a few lines of context | cheapest |
 | **How does X work / what is the flow** (a feature, a screen, `Class.method`) | `memory.mjs flow "<feature or Class.method>"`: the current written flow, whether its code changed since (per method, git blame), its timeline (History + linked decisions), the live calls from the graph. No flow written: the call chain traced from the code. Answer from this; read code only for what it does not say | small |
 | What did we decide / plan / promise about X | `memory.mjs mem "<topic>"` (BM25 over memory sections, 400 tokens) | small |
-| What did the boss say / ask / agree on about X in an earlier session that nobody wrote down | `memory.mjs sessions "<topic>"` (`--since 2026-10-01`): this project's past Claude Code conversations on this machine, the boss's words (also those sent mid-turn) and the agent's reply after each, secrets hidden. What was SAID, not checked: the code and `.memoir` win; write a decision that still holds into `.memoir`. The prompt hook adds up to 3 such lines by itself when the boss refers to an earlier talk ("kemarin", "tadi", "yang kita bahas") | small |
+| What did the boss say / ask / agree on about X in an earlier session that nobody wrote down | `memory.mjs sessions "<topic>"` (`--since 2026-10-01`): this project's past Claude Code conversations on this machine, the boss's words (also those sent mid-turn) and the agent's reply after each, secrets hidden. What was SAID, not checked: the code and `.brain` win; write a decision that still holds into `.brain`. The prompt hook adds up to 3 such lines by itself when the boss refers to an earlier talk ("kemarin", "tadi", "yang kita bahas") | small |
 | X, and the code around it, in one call | `memory.mjs recall "<topic>"` (memory 40 % + code graph, 1200 tokens) | medium |
 | **Any named symbol**: where X is defined, who calls or uses it, what a change to X breaks | `memory.mjs uses "X"` (or `"Class.X"`; `--depth 2` adds callers of callers) — the default code search | small |
 | Where is X in the code, how does it connect (a topic, not a name) | `memory.mjs recall "<question>"` (memory + code graph) | medium |
@@ -50,11 +50,11 @@ hits are certain. Use Grep only for a literal string (a message, a config value)
 reflection, DI, framework entry points, JNI and outside callers before deleting.
 
 ## The brain: memory as connected neurons (brain.mjs, 0 LLM tokens)
-Every memory unit (section, D-/G-/F- entry, table row) is a node, linked by what its text names (a link, `[superseded by D-x]`, an id, a two-part code symbol or repo path, the same task or table) and by co-recall that grows with use and fades (half-life 30 days); nothing is deleted. Cached in `graphify-out/brain.json`, rebuilt when memory or the code graph changes.
+Every memory unit (section, D-/G-/F- entry, table row) is a node, linked by what its text names (a link, `[superseded by D-x]`, an id, a two-part code symbol or repo path, the same task or table) and by co-recall that grows with use and fades (half-life 30 days); nothing is deleted. Cached in `.brain/graphify-out/brain.json`, rebuilt when memory or the code graph changes.
 - `memory.mjs brain` prints IDENTITY, SPACE, TIME, ASSOCIATION and MOTION.
 - **Hooks**: each boss message is searched first (UserPromptSubmit `prompt`): up to 3 one-line pointers when they match well, silent otherwise. A pure code search is answered by `guard` (row above). After a search that ran, `hint` points a repo symbol to `uses` and a big output to `find`, once per agent.
 
-## Flows: how the system works now (`.memoir/FLOWS.md`)
+## Flows: how the system works now (`.brain/FLOWS.md`)
 One `## F-<n> <name>` per user-visible flow (checkout, login, task rejection, upload): Trigger, numbered steps naming
 the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController@reject`), Rules, `History:` lines
 `- <date> task <id>: <what changed>`. The body is always the CURRENT behaviour (rewrite steps in place, never append
@@ -111,9 +111,9 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
   also `dicabut`, `replaced`). A bare bold "**removed from v3**" in the text is a fact, not a banner.
 - `mem` ranks by BM25 per section (heading words double), with Indonesian and English stems and a cross-language lookup for rare words; "latest / terakhir / sekarang" favours recently dated sections and STATUS.md.
 - **Search by meaning** (when Ollama runs locally with `bge-m3`, `ollama pull bge-m3`): every section and its heading
-  get a vector (graphify-out/embed.json, local), fused with the word score, so a question that shares no word with its
+  get a vector (.brain/graphify-out/embed.json, local), fused with the word score, so a question that shares no word with its
   note still finds it (`kirim file besar putus` -> "Resumable chunked uploads"). Vectors are built in the background
-  at session start, after a `.memoir` write and at ship (`memory.mjs embed` by hand); a prompt never waits for them.
+  at session start, after a `.brain` write and at ship (`memory.mjs embed` by hand); a prompt never waits for them.
   Measured on pankon (2026-11-06): Indonesian paraphrases found 2 -> 7/15, English paraphrases 9 -> 11/15, the old
   eval 15/15 kept (MRR 0.889 -> 1.000), id questions unchanged; prompt hook ~90 -> ~240 ms (words only while an
   index run is busy). Without Ollama nothing changes. Write headings with
@@ -137,7 +137,7 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
   not, ms; never the text): `memory.mjs prompt-stats` sums it.
 - **Session start** also registers the project in `~/.memoir/projects.json` (copies under the temp dir never), so
   `lessons` can search the other projects.
-- **After a Write/Edit under `.memoir/`**: `check` reports a secret value or that file's lint issues at once. Fix
+- **After a Write/Edit under `.brain/`**: `check` reports a secret value or that file's lint issues at once. Fix
   it in the same step.
 - **Before a compact and at session end**: `capture` saves the working position to the git directory (never
   committed): project files edited, the last checks with pass/fail, the boss's last two requests. Secrets are redacted.
@@ -146,15 +146,15 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
   blocks a ship; when it reports issues, fix them in the next memory edit (`memory.mjs lint` lists them).
 
 ## Checking the search itself
-`.memoir/eval.json` holds real questions and the entry that answers each (`[{"q": "tugas ditolak warna merah", "expect": "D-042"}]`).
+`.brain/eval.json` holds real questions and the entry that answers each (`[{"q": "tugas ditolak warna merah", "expect": "D-042"}]`).
 `memory.mjs eval` reports found / first / MRR / tokens per question. Run it before and after any change to the
 search or a big memory reorganization; a lower "found" or MRR is a regression. Add a question when a recall missed.
 Include paraphrases, not only questions that reuse the note's words (the boss's own wording, in Indonesian): an eval
 of near-copies of headings scored 15/15 while the same notes asked in other words scored 2/15. `MEMORY_ABLATE=semantic`
 runs the eval without meaning search, for a before/after.
 
-## One product, several repos (`repos` in .memoir/project.json)
+## One product, several repos (`repos` in .brain/project.json)
 When the kit lives in a home repo and the code in separate repos under it (e.g. `web/`, `mobile/`): `uses`, `find`,
 `debt` and `lint` search every repo and print paths from the home folder (`web/app/...`); the code graph is one per
-repo, merged into `graphify-out/graph.all.json` at every ship (by hand: `memory.mjs graph`). A path in memory may be
+repo, merged into `.brain/graphify-out/graph.all.json` at every ship (by hand: `memory.mjs graph`). A path in memory may be
 written relative to its own repo; say which repo when it is ambiguous (`app/` exists in both a Laravel and an Android repo).

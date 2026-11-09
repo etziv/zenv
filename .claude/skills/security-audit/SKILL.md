@@ -55,8 +55,8 @@ A change on several surfaces: read the matching references in turn, never all at
    Grep for the same pattern) and list them under the same finding number, each with its own trace.
 
 ## Earlier reviews
-Before a review that is not the MVP review, Grep the earlier reports for the files in scope: `.memoir/archive/*/*-security.md` (shipped tasks)
-and `.memoir/handoff/*-security.md` (the open one). A
+Before a review that is not the MVP review, Grep the earlier reports for the files in scope: `.brain/archive/*/*-security.md` (shipped tasks)
+and `.brain/handoff/*-security.md` (the open one). A
 claim rejected on unchanged code stays rejected: do not raise it again. An open or needs-validation finding on the same
 code is checked first. A changed file reopens its earlier claims, rejected ones included.
 

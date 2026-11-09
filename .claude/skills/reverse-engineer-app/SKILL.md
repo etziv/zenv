@@ -70,7 +70,7 @@ starts its own Claude Code outside the task's plan, tests and reviews; `doctor` 
 - Static analysis never observed execution: say runtime behaviour is inferred.
 - A broad question: `core_investigation_show` first (resume), `core_brief_write` and `core_plan_update` before
   analysis, `core_finding_record` with evidence ids when settled, `core_handoff_write` at the end. The task's
-  handoff file gets the finding ledger (conclusion, evidence ids, boundary, unknowns); `.memoir` gets only
+  handoff file gets the finding ledger (conclusion, evidence ids, boundary, unknowns); `.brain` gets only
   what a future session needs.
 - No secrets, cookies or personal data in notes, findings or handoffs.
 

@@ -8,7 +8,7 @@
 // --live hosts a FigCraft live session on this machine and prints its join link: the boss opens it in FigCraft
 // (or File > Join live session), and every step shows the agent's cursor gliding to the part it builds, with a chat
 // label of what it is doing; the viewer follows the agent (spotlight). Without --live the steps run back to back.
-// Plan (JSON): {"research": ".memoir/design/proposal/research.md" | "none: <reason, no product screen>", "app": true
+// Plan (JSON): {"research": ".brain/design/proposal/research.md" | "none: <reason, no product screen>", "app": true
 //   (pack checked with --app), "open": "<file .figcraft or REST .json>" (optional: a new file), "save": "<path .figcraft>",
 //   "steps": [{"label": "Header", "batch": [{"command", "params", "as"}...]} |
 //             {"label": "Card", "draw": {"tool": "rectangle", "from": [x, y], "to": [x, y]}, "props": {node.set keys}} |

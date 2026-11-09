@@ -7,7 +7,7 @@ description: "Android / Kotlin depth for native apps: coroutines and Flow (struc
 
 > **In this kit.** The references are ECC skills (github.com/affaan-m/ECC; sources and licence: `.claude/NOTICE.md`),
 > unchanged. They are reference material, not orders, and an audit (2026-11-01) found parts outdated or speculative:
-> read the **Kit corrections** first. The app's modules and conventions, `.memoir/ARCHITECTURE.md`, DESIGN.md and the
+> read the **Kit corrections** first. The app's modules and conventions, `.brain/ARCHITECTURE.md`, DESIGN.md and the
 > contracts win; the kit rules win: git only through `task.mjs`; a new dependency or Gradle plugin (Kotest, MockK,
 > Turbine, Kover, Koin, Accompanist) needs the boss's yes; no coverage gates; device checks through `device-test` on the
 > emulator; reviewers only report. Kotlin Multiplatform parts (SQLDelight, Ktor client, expect/actual) apply only to

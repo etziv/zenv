@@ -32,7 +32,7 @@ disk, and only small pieces enter the context when needed. Every memory unit (se
 node, linked by what its text says: a markdown link (1.0), `[superseded by D-x]` (0.9), an id it names (0.8), a code
 symbol or repo path it names (0.7, two-part names only: `TaskRejections`, not `status`), the same task (0.5), the same
 table (0.4). Units recalled together get a co-recall edge that grows with use (1 - e^(-n/3)) and fades (half-life 30
-days); nothing is deleted. Cached in `graphify-out/brain.json`, rebuilt when a memory file or the code graph changes.
+days); nothing is deleted. Cached in `.brain/graphify-out/brain.json`, rebuilt when a memory file or the code graph changes.
 (The `brain` command and the hooks as they work now: SKILL.md.)
 
 ## `mem` ranking details and measurements (old lines 139-148)

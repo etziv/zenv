@@ -11,7 +11,7 @@
         "--idle-timeout",
         "300000",
         "--output-dir",
-        ".playwright-mcp"
+        ".brain/playwright-mcp"
       ]
     },
     "figcraft": {

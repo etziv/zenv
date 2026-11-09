@@ -28,7 +28,7 @@ folder rename). So:
    `kill <n>`), or stop the background task you started; then confirm the port is free. A server you did not start stays.
 
 ## Web (browser) — via the `playwright` MCP
-The kit ships a project-scoped, isolated Playwright MCP (`.mcp.json`: `--isolated --headless`, output in `.playwright-mcp/`), so every project runs its own browser and parallel projects never fight. Approve it once when the session asks.
+The kit ships a project-scoped, isolated Playwright MCP (`.mcp.json`: `--isolated --headless`, output in `.brain/playwright-mcp/`), so every project runs its own browser and parallel projects never fight. Approve it once when the session asks.
 Browser: Chromium headless shell (`.claude/scripts/playwright-mcp.json`), about half the RAM of Chrome (measured
 2026-11-09: 107 vs 278 MB private for one page). The MCP version is pinned (`@playwright/mcp@0.0.84`) because each
 version needs its own shell build. "Browser ... is not installed" means the shell is missing on this machine: ask the

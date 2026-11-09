@@ -15,7 +15,7 @@
 //   node .claude/scripts/task.mjs usage [id|all]         token use and cost per task and model (from the usage hook)
 //   node .claude/scripts/task.mjs deploy [--sha <sha>] [--retest] | --rollback  start the deploy workflow (dev asks the boss first)
 //   node .claude/scripts/task.mjs deploy-status [run]    follow a deploy run (no approval)
-// Config: .memoir/project.json (base, releaseMode, mergeMethod, ciWaitMinutes, verify, repos).
+// Config: .brain/project.json (base, releaseMode, mergeMethod, ciWaitMinutes, verify, repos).
 // repos (optional): a product whose code lives in separate git repos under this home repo (kit + memory), e.g.
 //   "repos": [{ "name": "web", "path": "src", "verify": [...] }, { "name": "mobile", "path": "mobile", "verify": [...] }]
 // ship verifies each repo that changed and commits it on the branch it has checked out ([task-<id>], no branch,
@@ -31,6 +31,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const [sub, ...argv] = process.argv.slice(2);
+process.env.GRAPHIFY_OUT = ".brain/graphify-out"; // graphify runs and the git hooks of our commits write into the brain
 
 function die(msg) { console.error("task: " + msg); process.exit(1); }
 function run(bin, args, opts = {}) {
@@ -50,9 +51,9 @@ const ID_RE = /^[A-Za-z0-9][\w.-]{0,40}$/;
 const branchOf = (id) => "task/" + id;
 
 function rawConfig() {
-  const f = path.join(root, ".memoir", "project.json");
+  const f = path.join(root, ".brain", "project.json");
   if (!fs.existsSync(f)) return {};
-  try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { die(".memoir/project.json is not valid JSON"); }
+  try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { die(".brain/project.json is not valid JSON"); }
 }
 function config() {
   const c = rawConfig();
@@ -65,7 +66,7 @@ function config() {
     verify: verifyList(c.verify),
     repos: (Array.isArray(c.repos) ? c.repos : []).filter((r) => r && r.path).map((r) => {
       const dir = path.resolve(root, r.path);
-      if (!fs.existsSync(path.join(dir, ".git"))) die("repos: " + r.path + " is not a git repository (.memoir/project.json)");
+      if (!fs.existsSync(path.join(dir, ".git"))) die("repos: " + r.path + " is not a git repository (.brain/project.json)");
       return { name: r.name || r.path, path: r.path.replace(/\\/g, "/").replace(/\/+$/, ""), dir, verify: verifyList(r.verify) };
     }),
   };
@@ -150,12 +151,12 @@ function secretFiles(files) {
 }
 function graphifyUpdate() {
   if (config().repos.length) return memoryTool("graph"); // per-repo graphs merged into one (memory skill)
-  if (!fs.existsSync(path.join(root, "graphify-out", "graph.json"))) return;
+  if (!fs.existsSync(path.join(root, ".brain", "graphify-out", "graph.json"))) return;
   const r = run("graphify", ["update", "."]);
   console.log(r.ok ? "graph updated (graphify, no LLM)" : "note: graphify update failed: " + (r.err || r.out).split("\n").pop());
 }
 // The code a verify run proves: HEAD's tree, the content hash of every changed or untracked (not ignored) file outside
-// .memoir/ (memory and handoffs change between check and ship; anything a verify may read stays in), and the commands.
+// .brain/ (memory and handoffs change between check and ship; anything a verify may read stays in), and the commands.
 // Read-only: nothing is staged and `hash-object` without -w writes no object. null (no reuse) when a path cannot be
 // hashed, e.g. an untracked nested repo.
 // shortcut: ignored files (.env, vendor/, node_modules/) and the database are not in it; `--fresh` after changing them.
@@ -163,7 +164,7 @@ function codeStamp(cwd, cmds) {
   const tree = git(["rev-parse", "-q", "--verify", "HEAD^{tree}"], { cwd }).out || "no-commit";
   // no commit yet: every file is a change (changedFiles would miss staged files, which are neither diffed nor untracked)
   const all = tree === "no-commit" ? git(["-c", "core.quotePath=false", "ls-files", "-c", "-o", "--exclude-standard"], { cwd }).out.split("\n").filter(Boolean) : changedFiles("HEAD", cwd);
-  const files = [...new Set(all)].sort().filter((f) => !/^\.memoir\//.test(f));
+  const files = [...new Set(all)].sort().filter((f) => !/^\.brain\//.test(f));
   const present = files.filter((f) => fs.existsSync(path.join(cwd, f)));
   const h = present.length ? git(["hash-object", "--stdin-paths"], { cwd, input: present.join("\n") + "\n", maxBuffer: 256e6 }) : { ok: true, out: "" };
   if (!h.ok) return null;
@@ -196,7 +197,7 @@ function runVerify(cfg, cwd = root, label = "") {
 // What a ship must verify depends on what changed. verify (build/lint/test) proves the CODE; a task that changed
 // only design docs, memory or framework files (a kickoff, before any code exists) has nothing for it to build,
 // so it is skipped and the commit says why.
-const NON_CODE = /^(\.memoir\/|\.claude\/)|\.md$|^(\.gitignore|\.gitattributes|\.graphifyignore)$/i;
+const NON_CODE = /^(\.brain\/|\.claude\/)|\.md$|^(\.gitignore|\.gitattributes|\.graphifyignore)$/i;
 function verifyFor(cfg, files) {
   const results = [];
   const code = files.filter((f) => !NON_CODE.test(f));
@@ -205,7 +206,7 @@ function verifyFor(cfg, files) {
     if (!v.ok) return v;
     results.push(...v.results);
   } else console.log("verify skipped: no code changed (docs, memory and framework files only)");
-  if (!results.length) results.push({ name: code.length ? "verify (no commands configured in .memoir/project.json)" : "verify (no code changed)", ok: true, skipped: true });
+  if (!results.length) results.push({ name: code.length ? "verify (no commands configured in .brain/project.json)" : "verify (no code changed)", ok: true, skipped: true });
   return { ok: true, results };
 }
 // A task's verification (ship, and check on a task branch): the home list when code changed there, then each code
@@ -228,18 +229,18 @@ function verifyTask(cfg, files0, repos) {
 function planCheck(id, files) {
   const code = files.filter((f) => !NON_CODE.test(f));
   if (code.length < 3) return;
-  const f = [path.join(root, ".memoir", "handoff", id + "-dev.md"), path.join(root, ".memoir", "archive", id, id + "-dev.md")].find((p) => fs.existsSync(p));
+  const f = [path.join(root, ".brain", "handoff", id + "-dev.md"), path.join(root, ".brain", "archive", id, id + "-dev.md")].find((p) => fs.existsSync(p));
   const text = f ? fs.readFileSync(f, "utf8").replace(/<!--[\s\S]*?-->/g, "") : "";
   const section = (name) => {
     const m = text.match(new RegExp("^##[ \\t]*" + name + "[ \\t]*$([\\s\\S]*?)(?=^##[ \\t]|(?![\\s\\S]))", "mi"));
     return m ? m[1].split(/\r?\n/).filter((l) => /\w/.test(l) && !/<[^>]+>/.test(l)) : [];
   };
   const missing = ["Plan", "Test plan", "Test results"].filter((n) => !section(n).length);
-  if (missing.length) die("complex change (" + code.length + " code files) without " + missing.join(", ") + " in .memoir/handoff/" + id
+  if (missing.length) die("complex change (" + code.length + " code files) without " + missing.join(", ") + " in .brain/handoff/" + id
     + "-dev.md. Plan it, test it and record the results first (dev.md, Every task step 4), then ship again. Nothing was committed.");
 }
 
-// Memory upkeep through the memory skill (no LLM, 0 tokens): `maintain` rebuilds .memoir/infra.md, archives cold
+// Memory upkeep through the memory skill (no LLM, 0 tokens): `maintain` rebuilds .brain/infra.md, archives cold
 // superseded decisions and reports hygiene issues; `infra` only the index. Never blocks a ship.
 function memoryTool(cmd) {
   try {
@@ -254,11 +255,21 @@ function memoryTool(cmd) {
 // ---------- repository bootstrap: git init + first commit (local and reversible, so no approval)
 // App installers (an APK/XAPK kept for analysis) are references, not project code: never in git.
 // the same list the init scripts write (a template folder copied by hand gets it here too)
-function ensureGitignore(lines = ["graphify-out/", ".playwright-mcp/", ".craft-anything/", ".taste-skill/", ".env", ".env.*", "!.env.example", "*.apk", "*.xapk", "*.apks", "*.aab", "*.ipa"]) {
+function ensureGitignore(lines = [".craft-anything/", ".taste-skill/", ".env", ".env.*", "!.env.example", "*.apk", "*.xapk", "*.apks", "*.aab", "*.ipa"]) {
   const f = path.join(root, ".gitignore");
   const have = fs.existsSync(f) ? fs.readFileSync(f, "utf8").split(/\r?\n/) : [];
   const add = lines.filter((l) => !have.includes(l));
   if (add.length) fs.appendFileSync(f, (have.length && have[have.length - 1] !== "" ? "\n" : "") + add.join("\n") + "\n");
+}
+// graphify's git hooks rebuild the graph after a commit or checkout made outside this script too; they read GRAPHIFY_OUT
+function pinGraphHooks() {
+  const hooks = path.resolve(root, git(["rev-parse", "--git-path", "hooks"]).out || ".git/hooks");
+  for (const h of ["post-commit", "post-checkout", "post-merge", "post-rewrite"]) {
+    const f = path.join(hooks, h);
+    let t; try { t = fs.readFileSync(f, "utf8"); } catch { continue; }
+    if (!t.includes("# graphify-hook-start") || t.includes("GRAPHIFY_OUT:-.brain/")) continue;
+    fs.writeFileSync(f, t.replace("# graphify-hook-start", '# graphify-hook-start\nexport GRAPHIFY_OUT="${GRAPHIFY_OUT:-.brain/graphify-out}"'));
+  }
 }
 function ensureRepo() {
   const cfg = config();
@@ -276,7 +287,7 @@ function ensureRepo() {
     ensureRepoIgnores(cfg);
     // graphify hooks BEFORE the first commit: hook install edits .gitattributes, which must be in the commit
     if (run("graphify", ["--help"]).ok) {
-      if (!fs.existsSync(path.join(root, "graphify-out", "graph.json"))) run("graphify", ["update", "."]);
+      if (!fs.existsSync(path.join(root, ".brain", "graphify-out", "graph.json"))) run("graphify", ["update", "."]);
       const h = run("graphify", ["hook", "install"]);
       console.log(h.ok ? "graphify git hooks installed (graph rebuilds after each commit, no LLM)" : "note: graphify hook install failed");
     }
@@ -285,12 +296,15 @@ function ensureRepo() {
     if (secrets.length) die("these secret files would be committed; add them to .gitignore first:\n  " + secrets.join("\n  "));
     mustGit(["add", "-A"]);
     mustGit(["commit", "-q", "--allow-empty", "-m", "[setup] initial commit"], "first commit");
-    console.log("first commit created on " + currentBranch() + " (" + files.length + " files; .env and graphify-out/ ignored)");
+    console.log("first commit created on " + currentBranch() + " (" + files.length + " files; .env ignored)");
   }
+  pinGraphHooks();
 }
 // init-repo only: commit the framework's own files (installed or updated by the init/update scripts),
 // staged BY NAME so the boss's own uncommitted work is never included.
-const SETUP_PATHS = [".claude", ".memoir", "CLAUDE.md", "CLAUDE.kit.md", "AGENTS.md", ".mcp.json", ".graphifyignore", ".gitignore", ".gitattributes",
+const SETUP_PATHS = [".claude", ".brain", ".mcp.json", ".gitignore", ".gitattributes",
+  // the root files the kit used before .brain (task 29): their move into .brain/.claude is committed as a deletion here
+  ".memoir", "CLAUDE.md", "CLAUDE.kit.md", "AGENTS.md", ".graphifyignore",
   // present when the whole template folder was copied into the project instead of using init-project
   "scripts/init-project.ps1", "scripts/init-project.sh"];
 function setupCommit() {
@@ -299,7 +313,7 @@ function setupCommit() {
   const cur = currentBranch();
   if (cur.startsWith("task/")) { console.log("task branch " + cur + " is open: framework changes will ship with that task (nothing committed now)."); return; }
   const dirty = dirtyFiles().filter((f) => SETUP_PATHS.some((p) => f === p || f.startsWith(p + "/"))
-    && !f.startsWith(".memoir/handoff/") && !f.startsWith(".memoir/archive/"));
+    && !f.startsWith(".brain/handoff/") && !f.startsWith(".brain/archive/"));
   if (!dirty.length) return;
   const secrets = secretFiles(dirty);
   if (secrets.length) die("secret files among the setup files: " + secrets.join(", "));
@@ -315,9 +329,9 @@ function start(titleWords) {
   const cur = currentBranch(), open = taskOf(cur);
   if (open) { console.log("already on task " + open + " (" + cur + "); keep working on it or ship it first."); return; }
   const ignoresAdded = ensureRepoIgnores(cfg);
-  const outside = dirtyFiles().filter((f) => !f.startsWith(".memoir/") && !(ignoresAdded && f === ".gitignore"));
-  if (outside.length) die("uncommitted changes outside .memoir/ (commit or stash them yourself first):\n  " + outside.join("\n  "));
-  if (cur !== cfg.base) die("start new tasks from " + cfg.base + " (you are on " + cur + "). Change \"base\" in .memoir/project.json if needed.");
+  const outside = dirtyFiles().filter((f) => !f.startsWith(".brain/") && !(ignoresAdded && f === ".gitignore"));
+  if (outside.length) die("uncommitted changes outside .brain/ (commit or stash them yourself first):\n  " + outside.join("\n  "));
+  if (cur !== cfg.base) die("start new tasks from " + cfg.base + " (you are on " + cur + "). Change \"base\" in .brain/project.json if needed.");
   const cf = path.join(sd, "counter");
   let id = (parseInt(fs.existsSync(cf) ? fs.readFileSync(cf, "utf8") : "0", 10) || 0) + 1;
   while (git(["rev-parse", "--verify", "refs/heads/" + branchOf(id)]).ok) id++;
@@ -338,7 +352,7 @@ function start(titleWords) {
 // ---------- resume (abort keeps the branch)
 function resume(id) {
   if (!ID_RE.test(id || "")) die("usage: task.mjs start --resume <id>");
-  if (dirtyFiles().filter((f) => !f.startsWith(".memoir/")).length) die("uncommitted changes outside .memoir/; commit or stash them first.");
+  if (dirtyFiles().filter((f) => !f.startsWith(".brain/")).length) die("uncommitted changes outside .brain/; commit or stash them first.");
   mustGit(["switch", branchOf(id)]);
   console.log("resumed task " + id);
 }
@@ -362,7 +376,7 @@ function status() {
 }
 function check() {
   const cfg = config();
-  if (!cfg.verify.length && !cfg.repos.some((r) => r.verify.length)) { console.log("no verification commands in .memoir/project.json"); return; }
+  if (!cfg.verify.length && !cfg.repos.some((r) => r.verify.length)) { console.log("no verification commands in .brain/project.json"); return; }
   const id = taskOf(git(["symbolic-ref", "--short", "HEAD"]).out), st = id && readJson(path.join(stateDir(), id + ".json")); // symbolic-ref: also on an unborn branch
   if (st) { // on a task: what ship will verify, so qa's check and the ship share one run
     const v = verifyTask(cfg, changedFiles(st.startCommit), st.repos ? taskRepos(cfg, st) : []);
@@ -410,7 +424,7 @@ const vsum = (results) => results.map((x) => x.name + (x.skipped ? " SKIPPED" : 
 // The commit message goes in on stdin (`-F -`): no temp file to write and clean up.
 const commitWithMessage = (msg, args, cwd = root) => git(["commit", "-q", "-F", "-", ...args], { cwd, input: msg });
 function prBody(id, st, files, verify) {
-  const f = path.join(root, ".memoir", "archive", id, id + "-pr.md");
+  const f = path.join(root, ".brain", "archive", id, id + "-pr.md");
   if (fs.existsSync(f)) {
     const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
     const i = lines.findIndex((l) => l.trim());
@@ -442,7 +456,7 @@ function ship(id, evidence) {
   if (!v.ok) die("verification failed" + (v.repo ? " in " + v.repo : "") + ". Nothing was committed or sent. Fix it and ship again.\n" + v.tail);
 
   // archive this task's handoffs only once verification passed (a failed ship leaves everything in place)
-  const hd = path.join(root, ".memoir", "handoff"), ad = path.join(root, ".memoir", "archive", id);
+  const hd = path.join(root, ".brain", "handoff"), ad = path.join(root, ".brain", "archive", id);
   if (fs.existsSync(hd)) for (const f of fs.readdirSync(hd).filter((f) => f.startsWith(id + "-") || f.startsWith("task-" + id + "-"))) {
     fs.mkdirSync(ad, { recursive: true });
     fs.renameSync(path.join(hd, f), path.join(ad, f));

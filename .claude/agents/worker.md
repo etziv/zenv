@@ -20,5 +20,5 @@ You do ONE job the main dev gave you: its words, its files, its acceptance check
   emulator you start, you stop before replying (`device-test`, "Servers you start").
 
 ## Limits
-Never start, ship or abort tasks, never run git writes, never edit `.memoir/` except your own plan file or `.claude/`.
+Never start, ship or abort tasks, never run git writes, never edit `.brain/` except your own plan file or `.claude/`.
 Reply in max 150 words: files changed, evidence (command and result), open questions. Your final message is the deliverable: what you did with its evidence, or the blocker with what you tried. Never end with "waiting for ...", "next I will ..." or work promised for later.

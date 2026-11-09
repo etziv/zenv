@@ -17,7 +17,7 @@ Find callers and entry points with `memory.mjs uses "X" --depth 2` before readin
 
 Before you report a candidate, try to disprove it: trace the input from its entry point (route, intent, upload, env) to the sink, and look for what already stops it (middleware, policy, validation, framework default, the platform). Keep it only as **confirmed** (the whole trace holds) or **needs validation** (one named fact is missing: say what to run or check to settle it); list the disproved ones in one line under "Rejected" with why.
 
-ALWAYS write the report file the caller names (`.memoir/handoff/<id>-security.md`): your plan (at the MVP review also `## Map` and `## Coverage`), then each finding. Every finding needs a concrete case ("an attacker or this input does X and gets Y"); no case, no finding; re-read the lines before you report it. Numbered, highest severity first, in plain words:
+ALWAYS write the report file the caller names (`.brain/handoff/<id>-security.md`): your plan (at the MVP review also `## Map` and `## Coverage`), then each finding. Every finding needs a concrete case ("an attacker or this input does X and gets Y"); no case, no finding; re-read the lines before you report it. Numbered, highest severity first, in plain words:
 ```
 1. [high|medium|low] [confirmed|needs validation] <short title> (`<file>:L<from>-<to>`)
    - What this is: ...   - Problem: <the attack or failure>   - Fix: <the smallest one>   - If we skip it: ...

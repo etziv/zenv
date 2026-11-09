@@ -1,4 +1,4 @@
-// Cross-project lessons: a G- dead end / gotcha recorded in one project's .memoir/DECISIONS.md is findable from the
+// Cross-project lessons: a G- dead end / gotcha recorded in one project's .brain/DECISIONS.md is findable from the
 // other projects on this machine. Standalone module; memory.mjs wires it in (lessons command, brief registration).
 //   registerProject(root, info)  adds/updates { path, name, stack, seen } in <home>/.memoir/projects.json
 //   lessons(q, { self, budget, timeoutMs })  G- lines of the OTHER registered projects that match q, labelled
@@ -67,7 +67,7 @@ const SKIP_DIRS = new Set(["node_modules", "vendor", "build", "dist", "archive",
 export function deriveStack(root) {
   const words = new Set();
   try {
-    const lines = fs.readFileSync(path.join(root, ".memoir", "ARCHITECTURE.md"), "utf8").split(/\r?\n/);
+    const lines = fs.readFileSync(path.join(root, ".brain", "ARCHITECTURE.md"), "utf8").split(/\r?\n/);
     const at = lines.findIndex((l) => /^#{2,3}\s*chosen stack/i.test(l));
     if (at >= 0) {
       const sec = [];
@@ -94,7 +94,7 @@ export function registerProject(root, info = {}) {
     if (i >= 0 && JSON.stringify(list[i]) === JSON.stringify(entry)) return entry; // unchanged: no write on every session
     if (i >= 0) list[i] = entry; else list.push(entry);
     // a deleted or moved project leaves the registry at the next write (else it pushes real projects out)
-    for (let j = list.length - 1; j >= 0; j--) if (list[j] !== entry && !fs.existsSync(path.join(list[j].path, ".memoir"))) list.splice(j, 1);
+    for (let j = list.length - 1; j >= 0; j--) if (list[j] !== entry && !fs.existsSync(path.join(list[j].path, ".brain"))) list.splice(j, 1);
     list.sort((a, b) => (b.seen > a.seen) - (b.seen < a.seen));
     return writeRegistry(list.slice(0, MAX_ENTRIES)) ? entry : null;
   } catch { return null; }
@@ -120,7 +120,7 @@ export function lessons(q, { self, budget = 600, timeoutMs = 3000 } = {}) {
     const seenKeys = new Set();
     // Shared stack words first (a Laravel trap matters most to another Laravel project), then the newest seen. The
     // others still run: many traps (Windows, adb, git, Docker) cross stacks. Order matters for output and the cap.
-    const cand = list.filter((p) => { const k = norm(p.path); if (k === selfKey || seenKeys.has(k)) return false; seenKeys.add(k); return fs.existsSync(path.join(p.path, ".memoir")); })
+    const cand = list.filter((p) => { const k = norm(p.path); if (k === selfKey || seenKeys.has(k)) return false; seenKeys.add(k); return fs.existsSync(path.join(p.path, ".brain")); })
       .sort((a, b) => shared(b) - shared(a) || (b.seen > a.seen) - (b.seen < a.seen));
     const qw = qWords(q), need = qw.size >= 4 ? 2 : 1;
     if (!cand.length || !qw.size) return "";

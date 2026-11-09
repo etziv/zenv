@@ -1,9 +1,9 @@
-# The research pack (`.memoir/design/proposal/research.md`)
+# The research pack (`.brain/design/proposal/research.md`)
 
 The look of a product comes from what was surveyed, what the library already knows and the rules, never from taste.
 This file is the proof, written BEFORE any screen is drawn, and the brief every later drawer reads (a designer
 re-spawned for FigCraft, a worker, the `frontend` build). `node .claude/skills/design/scripts/library.mjs check
-.memoir/design/proposal/research.md` (add `--app` for app screens) must print `research pack complete`.
+.brain/design/proposal/research.md` (add `--app` for app screens) must print `research pack complete`.
 
 ## How to fill it
 1. Survey: 8+ shipped products of the category and its neighbours (web search: galleries, the products' own sites,

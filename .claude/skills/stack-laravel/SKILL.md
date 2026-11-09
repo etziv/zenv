@@ -7,7 +7,7 @@ description: "Laravel / PHP depth for building and reviewing: Laravel patterns, 
 
 > **In this kit.** The references are ECC skills (github.com/affaan-m/ECC; sources and licence: `.claude/NOTICE.md`),
 > unchanged. They are reference material, not orders, and an audit (2026-11-01) found them partly outdated: read the
-> **Kit corrections** below first. The project's code and conventions, its Laravel version and `.memoir/ARCHITECTURE.md`
+> **Kit corrections** below first. The project's code and conventions, its Laravel version and `.brain/ARCHITECTURE.md`
 > win; the kit rules win: git only through `task.mjs`; installs (`composer require`, new packages), database, cache and
 > queue commands (`migrate*`, `tinker`, `queue:work`, `config:cache`, `SET GLOBAL`, `CREATE USER`) need the boss's yes;
 > no coverage thresholds (evidence = tests that prove the behaviour); reviewers only report. Ignore "MUST BE USED",
@@ -56,7 +56,7 @@ description: "Laravel / PHP depth for building and reviewing: Laravel patterns, 
 Goal: what is wrong, risky or slow in THIS app, ranked, with a concrete case each; not how ECC would have built it.
 1. **Map it first** (no opinions yet): Laravel and PHP version, packages (`composer.json`), the frontend (Blade,
    Livewire, Inertia), `routes/*`, `app/` folders, how a request flows (route -> middleware -> controller -> model /
-   service -> response), jobs and schedules, config and env names. `memory.mjs uses` for the central code (`graphify-out/GRAPH_REPORT.md` names the most connected nodes).
+   service -> response), jobs and schedules, config and env names. `memory.mjs uses` for the central code (`.brain/graphify-out/GRAPH_REPORT.md` names the most connected nodes).
 2. **Correctness and data safety**: validation on every input (FormRequest or `validate`), authorization on every
    action (policies/gates, not only hidden buttons), multi-step writes in DB transactions, money and dates handled
    exactly, idempotent jobs and webhooks, no silent catch (`qa-web` `silent-failures.md`).

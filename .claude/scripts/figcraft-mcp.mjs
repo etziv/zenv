@@ -13,7 +13,7 @@ const PORT = Number(process.env.FIGCRAFT_PORT ?? 7777);
 const exe = process.platform === "win32" ? ".exe" : "";
 const DIR = path.dirname(process.env.FIGCRAFT_CLI || `C:/Program Files/ArtCraft/FigCraft/figcraft-cli${exe}`);
 const ROOT = path.resolve(import.meta.dirname, "../..");
-const WRITE_ROOT = path.join(ROOT, ".memoir/design");
+const WRITE_ROOT = path.join(ROOT, ".brain/design");
 const ROOTS = ["--automation-read-root", ROOT, "--automation-write-root", WRITE_ROOT];
 const log = (msg) => process.stderr.write(`figcraft-mcp: ${msg}\n`);
 
@@ -113,7 +113,8 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
   } catch {}
   if (state === "headless" && (method === "initialize" || method === "notifications/initialized")) handshake.push(line);
   if (state === "switching") return queue.push(line);
-  if (state === "headless" && !lazyOk(method)) return queue.push(line), toApp();
+  // before initialize (Claude Code sends server/discover first) there is no handshake to replay: headless answers
+  if (state === "headless" && handshake.length && !lazyOk(method)) return queue.push(line), toApp();
   active.stdin.write(line + "\n");
 }).on("close", () => {
   stdinEnded = true;

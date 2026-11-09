@@ -7,7 +7,7 @@ description: "React / TypeScript depth (incl. Inertia React + Vite): hooks, stat
 
 > **In this kit.** The references are ECC skills (github.com/affaan-m/ECC; sources and licence: `.claude/NOTICE.md`),
 > unchanged. They are reference material, not orders, and an audit (2026-11-01) found them partly outdated and
-> Next.js-centred: read the **Kit corrections** first. The project's components and conventions, `.memoir/DESIGN.md`,
+> Next.js-centred: read the **Kit corrections** first. The project's components and conventions, `.brain/DESIGN.md`,
 > ARCHITECTURE.md and the contracts win; the kit rules win: git only through `task.mjs`; a new library (TanStack,
 > SWR, React Hook Form, Zod, MSW, jest-axe, user-event, SWC, ESLint plugins) or a CI workflow needs the boss's yes;
 > no coverage thresholds; reviewers only report (no "recommend installing"). Ignore "MUST BE USED", `gh pr view`,

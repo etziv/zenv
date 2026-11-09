@@ -142,7 +142,7 @@ export function buildBrain(units, code = {}) {
   if (mods.length) {
     const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp("\\b(" + mods.map((m) => esc(m.id)).join("|") + ")\\b", "g");
-    for (const m of mods) node("place:mod:" + m.id, { type: "place", label: m.id + " " + String(m.name || "").split(/[:(]/)[0].trim().slice(0, 60), file: ".memoir/MODULES.md", line: 0, date: 0, cold: false, snippet: "module " + m.id + (m.status ? " [" + m.status + "]" : "") });
+    for (const m of mods) node("place:mod:" + m.id, { type: "place", label: m.id + " " + String(m.name || "").split(/[:(]/)[0].trim().slice(0, 60), file: ".brain/MODULES.md", line: 0, date: 0, cold: false, snippet: "module " + m.id + (m.status ? " [" + m.status + "]" : "") });
     for (const u of units) {
       if (/(^|\/)(archive|handoff)\//.test(u.file)) continue;
       const hits = new Set();
@@ -223,7 +223,7 @@ function describeVia(byId, via, id) {
   return "via " + shortLabel(from) + (from.type === "hub" || from.type === "place" ? " (same place)" : " (" + (VIA[v.t] || v.t) + ")");
 }
 
-// ---------- flows: how the system works now (`## F-<n> <name>` in .memoir/FLOWS.md)
+// ---------- flows: how the system works now (`## F-<n> <name>` in .brain/FLOWS.md)
 // Steps name their code in backticks (`TaskBoardViewModel.reject`, `TaskController@reject`, `RejectionService`);
 // `History:` lines (`- 2026-10-30 task 15: rejection needs a reason`) record how the flow got here, newest date =
 // when the flow text was last brought up to date.

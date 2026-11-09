@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// memory: the one front door to project memory. 0 LLM tokens: plain Node over `.memoir/` (markdown, the source of
+// memory: the one front door to project memory. 0 LLM tokens: plain Node over `.brain/` (markdown, the source of
 // truth), the graphify code graph (AST, rebuilt on commit) and the session transcripts. Never blocks work: every
 // failure prints a short note and exits 0. Usage: node .claude/skills/memory/scripts/memory.mjs <command> [args]
 // (each command and its flags: SKILL.md; the dispatch at the end of this file)
@@ -23,8 +23,9 @@ let ROT = null, LESSONS = null, PLOG = null;
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const root = process.env.MEMORY_ROOT ? path.resolve(process.env.MEMORY_ROOT) : path.resolve(HERE, "..", "..", "..", "..");
-const MEM = path.join(root, ".memoir");
-// A product whose code lives in separate git repos under this home repo ("repos" in .memoir/project.json, e.g. web
+const MEM = path.join(root, ".brain");
+process.env.GRAPHIFY_OUT = ".brain/graphify-out"; // every graphify run below writes the graph into the brain
+// A product whose code lives in separate git repos under this home repo ("repos" in .brain/project.json, e.g. web
 // in src/ and the app in mobile/): every search runs in each repo, and the code graph is one merged file.
 const REPOS = (() => {
   try {
@@ -35,7 +36,7 @@ const REPOS = (() => {
   } catch { return []; }
 })();
 const ROOTS = [{ name: "home", path: ".", prefix: "", dir: root }, ...REPOS];
-const GRAPH = path.join(root, "graphify-out", REPOS.length ? "graph.all.json" : "graph.json");
+const GRAPH = path.join(root, ".brain", "graphify-out", REPOS.length ? "graph.all.json" : "graph.json");
 // git in every root; each output line is prefixed with its root's path, so paths read relative to the home folder.
 let GIT_SLOW = false; // a git call the guard gave up on: its answer would be partial
 function gitAll(args) {
@@ -77,7 +78,7 @@ const hookIn = () => { try { return JSON.parse(fs.readFileSync(0, "utf8") || "{}
 const repoOf = (f) => { const R = REPOS.find((x) => f.startsWith(x.prefix)) || ROOTS[0]; return [R, R.prefix ? f.slice(R.prefix.length) : f]; };
 // `git grep -n` line -> { f, n, t } (a CRLF file leaves a trailing \r, which `.*$` would not match)
 const grepHit = (l) => { const m = l.replace(/\r$/, "").match(/^(.+?):(\d+):(.*)$/); return m && { f: m[1], n: +m[2], t: m[3] }; };
-const GREP_PATHS = ["--", ".", ":!graphify-out", ":!.memoir", ":!.claude", ":!*.min.js", ":!*.lock", ":!package-lock.json"];
+const GREP_PATHS = ["--", ".", ":!graphify-out", ":!.brain", ":!.claude", ":!*.min.js", ":!*.lock", ":!package-lock.json"];
 // a `@@ -a,b +c,d @@` hunk match -> [first, last] line
 const hunkSpan = (m) => [+m[1], +m[1] + Math.max(1, m[2] == null ? 1 : +m[2]) - 1];
 
@@ -256,7 +257,7 @@ function staleOf(file) {
 // ---------- meaning search (optional): local Ollama embeddings fused with BM25, so a question that shares no word with
 // its note is found (pankon Indonesian paraphrases: 2/15 by words alone, 7/15 with meaning). No Ollama, model or
 // vectors: exactly the word search. Vectors in graphify-out/embed.json by model and text hash, filled in the background.
-const EMB_FILE = path.join(root, "graphify-out", "embed.json");
+const EMB_FILE = path.join(root, ".brain", "graphify-out", "embed.json");
 // A cloud model (`*:cloud`, `*-cloud`) would make Ollama forward memory text to ollama.com: local models only.
 const EMB_MODEL = /cloud/i.test(process.env.MEMORY_EMBED_MODEL || "") ? "bge-m3" : process.env.MEMORY_EMBED_MODEL || "bge-m3";
 // Loopback only: memory text must not leave the machine, so an OLLAMA_HOST pointing elsewhere is not used.
@@ -429,7 +430,7 @@ function renderUnit(u, maxChars) {
 }
 function printMemory(q, budget, all) {
   const hits = searchMemory(q, all);
-  if (!hits.length) { out("[memory] nothing in .memoir matches \"" + q + "\"" + (all ? "" : " (try --all for archive/ and handoff/)")); return 0; }
+  if (!hits.length) { out("[memory] nothing in .brain matches \"" + q + "\"" + (all ? "" : " (try --all for archive/ and handoff/)")); return 0; }
   const access = loadState("access.json", {});
   // Two layers: the best two in full, then one line each (where + heading), so more candidates fit the same budget;
   // Read a line's file:line when it is the one you need.
@@ -465,9 +466,9 @@ function printMemory(q, budget, all) {
 // graphify's AST pass is syntax-only (`dao.insertFolder()` has no edge: it does not know `dao` is a LibraryDao).
 // resolveCalls() adds those edges from receiver types (declarations, class names, `this`, supertypes, else only owners
 // the calling file can see) into graphify-out/graph.memory.json, rebuilt when graph.json changes; graph commands use it.
-const AUG = path.join(root, "graphify-out", "graph.memory.json");
-const AUG_STAMP = path.join(root, "graphify-out", "graph.memory.stamp");
-const NAMES = path.join(root, "graphify-out", "graph.names.txt");
+const AUG = path.join(root, ".brain", "graphify-out", "graph.memory.json");
+const AUG_STAMP = path.join(root, ".brain", "graphify-out", "graph.memory.stamp");
+const NAMES = path.join(root, ".brain", "graphify-out", "graph.names.txt");
 const CODE_EXT = /\.(kt|kts|java|scala|groovy|ts|tsx|js|jsx|mjs|cjs|vue|svelte|php|py|go|rs|cs|swift|dart|rb)$/i;
 const NOT_CALLS = new Set(["if", "for", "while", "when", "switch", "catch", "return", "function", "fun", "def", "func", "new", "typeof", "sizeof", "super", "this", "self", "print", "println", "require", "import", "list", "map", "set", "get",
   "isset", "empty", "array", "unset", "echo", "match", "fn", "compact", "exit", "die", "eval", "include", "foreach", "elseif", "static", "parent"]);
@@ -833,11 +834,11 @@ function buildGraph() {
       if (!/^\/?graphify-out\/?\s*$/m.test(t)) { fs.mkdirSync(path.dirname(ex), { recursive: true }); fs.appendFileSync(ex, (t && !t.endsWith("\n") ? "\n" : "") + "graphify-out/\n"); }
     } catch { /* the graph still builds; the folder may then show as untracked in that repo */ }
     const r = spawnSync("graphify", ["update", R.path], { cwd: root, encoding: "utf8", timeout: 900000, maxBuffer: 64e6 });
-    const g = path.join(R.dir, "graphify-out", "graph.json");
+    const g = path.join(R.dir, ".brain", "graphify-out", "graph.json");
     if (r.status === 0 && fs.existsSync(g)) parts.push(g); else notes.push(R.name + ": " + gerr(r));
   }
   const h = spawnSync("graphify", ["update", "."], { cwd: root, encoding: "utf8", timeout: 900000, maxBuffer: 64e6 });
-  const hg = path.join(root, "graphify-out", "graph.json");
+  const hg = path.join(root, ".brain", "graphify-out", "graph.json");
   if (h.status === 0 && fs.existsSync(hg)) parts.unshift(hg); else notes.push("home: " + gerr(h));
   if (!parts.length) return "[graph] nothing built: " + notes.join("; ");
   fs.mkdirSync(path.dirname(GRAPH), { recursive: true });
@@ -848,17 +849,17 @@ function buildGraph() {
   }
   return "[graph] merged " + parts.length + " graph(s) (" + ["home", ...REPOS.map((R) => R.name)].join(", ") + ") into " + rel(GRAPH) + (notes.length ? "; not built: " + notes.join("; ") : "");
 }
-// Retrieval check before and after a search change: .memoir/eval.json = [{ "q": "<question>", "expect": "D-042" }];
+// Retrieval check before and after a search change: .brain/eval.json = [{ "q": "<question>", "expect": "D-042" }];
 // `mem` per question (access counts untouched): found, position, tokens.
 function evalMemory(budget) {
-  let cases; try { cases = JSON.parse(read(".memoir/eval.json") || "null"); } catch { cases = null; }
-  if (!Array.isArray(cases) || !cases.length) { out("[eval] no .memoir/eval.json: add [{\"q\": \"...\", \"expect\": \"D-012\"}, ...] (real questions, the entry that answers them)"); return; }
+  let cases; try { cases = JSON.parse(read(".brain/eval.json") || "null"); } catch { cases = null; }
+  if (!Array.isArray(cases) || !cases.length) { out("[eval] no .brain/eval.json: add [{\"q\": \"...\", \"expect\": \"D-012\"}, ...] (real questions, the entry that answers them)"); return; }
   let found = 0, first = 0, mrr = 0, toks = 0;
   for (const c of cases) {
     const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "mem", c.q, "--budget", String(budget)],
       { cwd: root, encoding: "utf8", env: { ...process.env, MEMORY_ROOT: root, MEMORY_NO_ACCESS: "1" } });
     const o = r.stdout || ""; toks += tok(o);
-    const entries = o.split(/^## related/m)[0].split(/\r?\n/).filter((l) => l.startsWith(".memoir/") && l.includes(":"));
+    const entries = o.split(/^## related/m)[0].split(/\r?\n/).filter((l) => l.startsWith(".brain/") && l.includes(":"));
     const id = String(c.expect || "");
     const pos = entries.findIndex((l) => ["# " + id + " ", "  " + id + " ", "- " + id + " "].some((p) => l.includes(p)) || l.endsWith(" " + id));
     if (pos >= 0) { found++; mrr += 1 / (pos + 1); if (pos === 0) first++; }
@@ -898,7 +899,7 @@ function textHits(re, word) {
   const g = gitAll([...args, ...GREP_PATHS]);
   if (g) return g.map(grepHit).filter(Boolean);
   let rx; try { rx = word ? new RegExp("(?<![\\w$])" + re.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w$])") : new RegExp(re); } catch (e) { out("[find] bad regex: " + e.message); return null; }
-  const SKIP = new Set(["node_modules", "vendor", "dist", "build", ".gradle", ".git", "graphify-out", ".memoir", ".claude", "coverage"]);
+  const SKIP = new Set(["node_modules", "vendor", "dist", "build", ".gradle", ".git", "graphify-out", ".brain", ".claude", "coverage"]);
   (function walk(d, depth) {
     if (depth > 12 || hits.length > 2000) return;
     let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
@@ -1019,7 +1020,7 @@ function uses(q, budget, depth, all) {
 function debt() {
   const re = "(#|//|/\\*|--|<!--) ?shortcut:";
   const g = gitAll(["grep", "-n", "-I", "-E", "--untracked", "--no-color", "-e", re, "--", ".",
-    ":!graphify-out", ":!.memoir", ":!.claude", ":!*.md"]);
+    ":!graphify-out", ":!.brain", ":!.claude", ":!*.md"]);
   if (!g) { out("[debt] needs a git repository; use: memory.mjs find \"shortcut:\""); return; }
   const rows = g.map(grepHit).filter(Boolean);
   if (!rows.length) { out("[debt] no shortcut debt. Clean ledger."); return; }
@@ -1039,7 +1040,7 @@ function identifierCounts() {
   const counts = new Map();
   const list = gitAll(["ls-files", "-co", "--exclude-standard"]) || [];
   for (const f of list) {
-    if (/(^|\/)(graphify-out|\.memoir|\.claude)\//.test(f) || /\.(md|png|jpe?g|gif|webp|so|a|jar|aar|apk|zip|gz|ttf|otf|woff2?|mp[34]|mkv|wav|pdf|lock)$/i.test(f)) continue;
+    if (/(^|\/)(graphify-out|\.brain|\.claude)\//.test(f) || /\.(md|png|jpe?g|gif|webp|so|a|jar|aar|apk|zip|gz|ttf|otf|woff2?|mp[34]|mkv|wav|pdf|lock)$/i.test(f)) continue;
     let t; try { const p = path.join(root, f); if (fs.statSync(p).size > 2e6) continue; t = fs.readFileSync(p, "utf8"); } catch { continue; }
     if (t.includes("\u0000")) continue;
     for (const m of t.matchAll(/[A-Za-z_$][\w$]*/g)) counts.set(m[0], (counts.get(m[0]) || 0) + 1);
@@ -1120,7 +1121,7 @@ function lint(only) {
   const files = only ? [only] : memFiles(false);
   const archived = memFiles(true).filter((f) => /[\\/](archive|handoff)[\\/]/.test(f));
   for (const f of files) {
-    const raw = read(f) || "", text = stripComments(raw), lines = text.split(/\r?\n/), name = rel(f).replace(/^\.memoir\//, "");
+    const raw = read(f) || "", text = stripComments(raw), lines = text.split(/\r?\n/), name = rel(f).replace(/^\.brain\//, "");
     const lim = LIMITS[name] || (/^contracts\//.test(name) ? 150 : 0);
     const n = raw.split(/\r?\n/).length;
     if (lim && n > lim) add(f, 0, "over limit", n + " lines (max " + lim + "): merge and summarize");
@@ -1170,7 +1171,7 @@ function lint(only) {
       }
     });
   }
-  const ents = !only || rel(only) === ".memoir/DECISIONS.md" ? decisionEntries() : [];
+  const ents = !only || rel(only) === ".brain/DECISIONS.md" ? decisionEntries() : [];
   const seen = new Map();
   for (const e of ents) { if (!e.id) continue; if (seen.has(e.id)) add(e.file, e.line, "duplicate id", e.id + " also at line " + seen.get(e.id)); else seen.set(e.id, e.line); }
   const gotchas = ents.filter((e) => e.kind === "gotcha");
@@ -1205,7 +1206,7 @@ function compact(dry) {
     let j = i + 1; while (j < lines.length && !/^##\s/.test(mask[j]) && !/^\s*(?:-\s*)?G-\d+/.test(mask[j])) j++;
     while (j > i + 1 && !lines[j - 1].trim()) j--;
     const date = (m[2].match(/\d{4}-\d{2}-\d{2}/g) || []).pop();
-    const a = access[".memoir/DECISIONS.md#" + mask[i].replace(/^##\s+/, "").trim().slice(0, 80)];
+    const a = access[".brain/DECISIONS.md#" + mask[i].replace(/^##\s+/, "").trim().slice(0, 80)];
     if (days(date) < 14 || (a && days(a.last) < 14)) continue; // recently decided or recently used: keep it here
     moves.push({ start: i, end: j, id: m[1], head: lines[i].replace(/^##\s+/, ""), block: lines.slice(i, j).join("\n") });
   }
@@ -1300,21 +1301,21 @@ function brief() {
   // A copy under the temp dir (tests, evals, audits) is never a project the boss works in: not registered.
   const tr = path.relative(os.tmpdir(), root), inTemp = !tr || (!tr.startsWith("..") && !path.isAbsolute(tr));
   if (LESSONS && p.hook_event_name !== "SubagentStart" && !process.env.MEMORY_NO_REGISTER && !inTemp) LESSONS.registerProject(root, { name: path.basename(root) });
-  let cfg = {}; try { cfg = JSON.parse(read(".memoir/project.json") || "{}"); } catch { /* defaults */ }
+  let cfg = {}; try { cfg = JSON.parse(read(".brain/project.json") || "{}"); } catch { /* defaults */ }
   const verify = [...(cfg.verify || []), ...(Array.isArray(cfg.repos) ? cfg.repos : []).flatMap((r) => (r && r.verify || []).map((v) => ({ ...v, name: (r.name || r.path) + "/" + v.name })))]
     .filter((v) => v && v.run && String(v.run).trim());
   // Where the project stands, from memory alone: BRIEF/ARCHITECTURE templates carry "Status: draft | approved <date>".
   const filled = (f) => { const t = read(f); return !!t && !/approved <date>/.test(t); };
   const hasCode = ["package.json", "composer.json", "build.gradle.kts", "settings.gradle.kts", "go.mod", "Cargo.toml", "pyproject.toml", "pom.xml"].some((f) => ROOTS.some((R) => fs.existsSync(path.join(R.dir, f))));
-  const stage = !filled(".memoir/BRIEF.md") ? (hasCode ? "stage: existing code, no memory -> adopt skill" : "stage: new project -> kickoff skill")
-    : !filled(".memoir/ARCHITECTURE.md") ? "stage: brief done -> architecture skill" : "stage: building or maintaining (see STATUS)";
+  const stage = !filled(".brain/BRIEF.md") ? (hasCode ? "stage: existing code, no memory -> adopt skill" : "stage: new project -> kickoff skill")
+    : !filled(".brain/ARCHITECTURE.md") ? "stage: brief done -> architecture skill" : "stage: building or maintaining (see STATUS)";
   const br = branch(), task = br.match(/^task\/(.+)$/);
   let title = "";
   if (task) { try { title = JSON.parse(read(path.join(gitDir() || ".git", "memoir", task[1] + ".json"))).title; } catch { /* unknown */ } }
   const L = [
     "[project] releaseMode: " + (cfg.releaseMode || "merge") + " | base: " + (cfg.base || "main") + " | " + stage,
     "[project] " + (task ? "OPEN task " + task[1] + (title ? " \"" + title + "\"" : "") + " on " + br + " (continue it or ship it)" : "no open task (on " + br + ")"),
-    "[project] verify: " + (verify.length ? (() => { const s = verify.map((v) => v.name + " = " + (v.run.length > 70 ? "..." + v.run.slice(-60) : v.run)).join(" ; "); return s.length > 1500 ? s.slice(0, 1500).replace(/ ; [^;]*$/, "") + " ; +more in .memoir/project.json" : s; })() : "NONE configured (haiku class disabled; nothing proves a change is safe)"),
+    "[project] verify: " + (verify.length ? (() => { const s = verify.map((v) => v.name + " = " + (v.run.length > 70 ? "..." + v.run.slice(-60) : v.run)).join(" ; "); return s.length > 1500 ? s.slice(0, 1500).replace(/ ; [^;]*$/, "") + " ; +more in .brain/project.json" : s; })() : "NONE configured (haiku class disabled; nothing proves a change is safe)"),
     "[memory] " + (fs.existsSync(GRAPH) ? "graph ready" : "no graph yet") + " | node .claude/skills/memory/scripts/memory.mjs uses \"X\" = every user of a symbol (not Grep) | recall \"<q>\" (mem / code / find / dead / cycles; skill `memory`)",
   ];
   // Module board, state not an overview: done modules are only counted; the open ones are named (max 6, short titles).
@@ -1343,7 +1344,7 @@ function brief() {
   } catch { /* the brain line is extra */ }
   // The open task's plan: goal, the next step without a recorded result, and the last result.
   if (task) {
-    const plan = read(".memoir/handoff/" + task[1] + "-dev.md");
+    const plan = read(".brain/handoff/" + task[1] + "-dev.md");
     if (plan) {
       const goal = (plan.match(/^Goal:\s*(.+?)(?:\s{2,}Steps:|$)/m) || [])[1];
       const res = plan.split(/^##[ \t]*Test results[ \t]*$/mi)[1] || "";
@@ -1354,7 +1355,7 @@ function brief() {
       const next = steps.find(([n]) => !recorded.has(n));
       L.push("[plan] " + (goal ? goal.slice(0, 160) : "plan file present") + " | results: " + done.length
         + (next ? " | next: step " + next[0] + ") " + next[1].slice(0, 90) : "") + (done.length ? " | last: " + done[done.length - 1].replace(/^\s*-\s*/, "").slice(0, 100) : ""));
-    } else L.push("[plan] none yet (.memoir/handoff/" + task[1] + "-dev.md): a complex task starts there");
+    } else L.push("[plan] none yet (.brain/handoff/" + task[1] + "-dev.md): a complex task starts there");
   }
   // Where the last session stopped (saved by the capture hook before a compact or at session end).
   const s = sub ? null : loadState("session.json", null);
@@ -1373,7 +1374,7 @@ function brief() {
   const lastLint = loadState("lint.json", null);
   if (lastLint && lastLint.flows && lastLint.flows.length) L.push("[flows] out of date at the last check: " + lastLint.flows.join(", ") + ": `memory.mjs flow " + lastLint.flows[0] + "` shows what changed; update the steps + a History line");
   if (lastLint && lastLint.n > ((lastLint.flows || []).length)) L.push("[memory] " + (lastLint.n - (lastLint.flows || []).length) + " hygiene issue(s) at the last ship: run `memory.mjs lint`");
-  const status = sub ? null : read(".memoir/STATUS.md");
+  const status = sub ? null : read(".brain/STATUS.md");
   if (status) {
     const body = status.split(/\r?\n/).filter((l) => l.trim() && !/^#\s/.test(l) && !/^\s*-\s*$/.test(l) && !/<[a-z ]+>/.test(l)).slice(0, 14);
     // Printed at every session start and /clear: capped (a 7,000-character line once cost ~1,900 tokens each time).
@@ -1446,19 +1447,19 @@ function secretLines(text) {
   });
   return hits;
 }
-// PostToolUse hook on Write / Edit: a file written under .memoir/ is checked at once (secret values, and that file's
+// PostToolUse hook on Write / Edit: a file written under .brain/ is checked at once (secret values, and that file's
 // lint issues: limits, stale paths, broken links), so a mistake is fixed in the same step instead of at the next ship.
 function checkWrite() {
   const p = hookIn(); if (!p) return;
   const fp = String((p.tool_input || {}).file_path || ""); if (!fp) return;
   const abs = path.resolve(root, fp), r = rel(abs);
-  if (!/^\.memoir\/.*\.md$/.test(r) || /^\.memoir\/cache\//.test(r)) return;
+  if (!/^\.brain\/.*\.md$/.test(r) || /^\.brain\/cache\//.test(r)) return;
   embedLater(); // the edited note's meaning vector, in the background
   const text = read(abs); if (text == null) return;
   const msgs = [];
   const sec = secretLines(text);
   if (sec.length) msgs.push("possible secret value at line " + sec.slice(0, 5).join(", ") + ": memory never holds secret values, replace it with [redacted]");
-  if (!/^\.memoir\/(archive|handoff)\//.test(r)) { try { for (const x of lint(abs)) if (x.startsWith(r + ":") || x.startsWith(r + " ")) msgs.push(x.slice(r.length).replace(/^:(\d+)/, "line $1").trim()); } catch { /* lint is extra */ } }
+  if (!/^\.brain\/(archive|handoff)\//.test(r)) { try { for (const x of lint(abs)) if (x.startsWith(r + ":") || x.startsWith(r + " ")) msgs.push(x.slice(r.length).replace(/^:(\d+)/, "line $1").trim()); } catch { /* lint is extra */ } }
   if (!msgs.length) return;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: "memory check " + r + ": " + msgs.slice(0, 8).join(" | ") } }));
 }
@@ -1517,7 +1518,7 @@ function guard() {
     glob = ti.glob ? String(ti.glob) : null; type = ti.type ? String(ti.type) : null; limit = +ti.head_limit || 0;
   } else if (p.tool_name === "Bash" || p.tool_name === "PowerShell") {
     const c = String(ti.command || "");
-    if (/\.memoir|memory\.mjs/.test(c)) return;
+    if (/\.brain|memory\.mjs/.test(c)) return;
     // Only a pure search is answered (the command IS the grep, at most piped into head / tail / sort / uniq / wc): a
     // chained command would lose its other parts to a deny, and a `cd` elsewhere searches another repo (ebphtbv3).
     const lead = c.trim().replace(/^rtk\s+(?:proxy\s+)?/, ""), shape = lead.replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
@@ -1559,10 +1560,10 @@ function guard() {
     if (/[*?]/.test(s)) { glob = glob || s.split(/[\\/]/).pop(); continue; }
     const r = path.isAbsolute(s) ? rel(s) : s.replace(/\\/g, "/").replace(/^\.\/?/, "");
     if (r.startsWith("..")) return;
-    if (/^(?:\.memoir|\.claude|graphify-out)(?:\/|$)|\.md$/.test(r)) return;
+    if (/^(?:\.brain|\.claude|graphify-out)(?:\/|$)|\.md$/.test(r)) return;
     if (r) prefixes.push(r.replace(/\/+$/, ""));
   }
-  if (/\.memoir|\.md\b/.test(String(glob || ""))) return;
+  if (/\.brain|\.md\b/.test(String(glob || ""))) return;
   const TYPES = { php: "php", js: "js|jsx|mjs|cjs", ts: "ts|tsx", py: "py", rust: "rs", go: "go", java: "java", kotlin: "kt|kts", css: "css|scss|sass|less", html: "html?|blade\\.php", vue: "vue", json: "json", sql: "sql", yaml: "ya?ml", sh: "sh", xml: "xml", cs: "cs", rb: "rb", swift: "swift", dart: "dart" };
   if (type && !TYPES[type]) return;
   const globRe = glob ? new RegExp((glob.includes("/") ? "^" : "(?:^|/)") + glob.replace(/[.+^$()|[\]\\]/g, "\\$&").replace(/\{([^}]*)\}/g, (_, a) => "(?:" + a.split(",").join("|") + ")").replace(/\*\*\//g, "\u0001").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]").replace(/\u0001/g, "(?:.*/)?") + "$") : null;
@@ -1688,7 +1689,7 @@ function newerOn(u) {
     .filter((n) => n && n.type === "decision" && !n.superseded && !n.cold && n.date > me.date)
     .sort((a, c) => c.date - a.date).slice(0, 2);
 }
-const newerNote = (u) => { const ns = OFF.has("time") ? [] : newerOn(u); return ns.length ? "! newer on this subject (may replace part of it): " + ns.map((n) => B.idOf(n.label) + " " + new Date(n.date).toISOString().slice(0, 10) + " " + n.file.replace(/^\.memoir\//, "") + ":" + n.line).join(", ") : ""; };
+const newerNote = (u) => { const ns = OFF.has("time") ? [] : newerOn(u); return ns.length ? "! newer on this subject (may replace part of it): " + ns.map((n) => B.idOf(n.label) + " " + new Date(n.date).toISOString().slice(0, 10) + " " + n.file.replace(/^\.brain\//, "") + ":" + n.line).join(", ") : ""; };
 // UserPromptSubmit hook: recall on stimulus. The boss's message is searched in memory and at most 3 one-line pointers
 // (~100 tokens) are added when they match well; silent on short or vague messages ("lanjut").
 const CHAT = new Set(("mantap yang di ke dari dan atau ini itu untuk dengan tidak tak bisa sudah udah belum akan ada juga saja aja kenapa mengapa " +
@@ -1747,7 +1748,7 @@ async function promptRecall() {
 // ---------- sessions: what the boss said in past sessions that nobody wrote down. BM25 over this project's transcripts
 // (~/.claude/projects/<path slug>/*.jsonl: the boss's messages, also those queued mid-turn, and the agent's replies;
 // no tool output, hook text or subagents), cached in graphify-out/. What was SAID is not what is TRUE.
-const SESS_IX = path.join(root, "graphify-out", "sessions.index.json");
+const SESS_IX = path.join(root, ".brain", "graphify-out", "sessions.index.json");
 function sessionFiles() {
   const base = process.env.MEMORY_SESSIONS_DIR || path.join(os.homedir(), ".claude", "projects");
   const slug = (d) => path.resolve(d).replace(/[^A-Za-z0-9]/g, "-").toLowerCase();
@@ -1804,7 +1805,7 @@ function sessionIndex(skip) {
     if (ix.files[k] && ix.files[k].stamp === stamp) { keep[k] = ix.files[k]; continue; }
     keep[k] = { stamp, docs: parseSession(f) }; changed = true;
   }
-  if (changed || Object.keys(keep).length !== Object.keys(ix.files).length) { ix.files = keep; try { if (fs.existsSync(path.join(root, "graphify-out"))) writeAtomic(SESS_IX, JSON.stringify(ix)); } catch { /* read-only: search anyway */ } }
+  if (changed || Object.keys(keep).length !== Object.keys(ix.files).length) { ix.files = keep; try { if (fs.existsSync(path.join(root, ".brain", "graphify-out"))) writeAtomic(SESS_IX, JSON.stringify(ix)); } catch { /* read-only: search anyway */ } }
   return (sessIxCache = ix);
 }
 // BM25 over every said text; the boss's own words weigh a little more (they are what nobody wrote down)
@@ -1855,7 +1856,7 @@ function sessionsCmd(q, budget, since) {
   if (!hits.length) { out("[sessions] nothing in this project's past sessions matches \"" + q + "\"" + (sessionFiles().length ? "" : " (no session transcripts on this machine for this folder)")); return; }
   const words = [...new Set(tokens(q))].filter((w) => !CHAT.has(w));
   let used = 0; const say = (s) => { out(s); used += tok(s) + 1; };
-  say("[sessions] past conversations of this project, best match first. What was SAID, not checked: the code and .memoir win where they differ; write a decision that still holds into .memoir.");
+  say("[sessions] past conversations of this project, best match first. What was SAID, not checked: the code and .brain win where they differ; write a decision that still holds into .brain.");
   for (const h of hits.slice(0, 12)) {
     const line = h.d.ts + "  " + h.d.sid.slice(0, 8) + "  " + h.d.r + ": " + saidSnippet(h.d.t, words), next = h.d.r === "boss" ? replyAfter(h) : "";
     if (used + tok(line) + (next ? tok(next) + 12 : 0) > budget) break;
@@ -1866,8 +1867,8 @@ function sessionsCmd(q, budget, since) {
 // ---------- brain: memory as connected neurons (brain.mjs)
 // Nodes = memory units + the code they name; edges from what the text says; co-recall strengthens, time fades.
 // Cached in graphify-out/brain.json, rebuilt when a memory file or the code graph changes. 0 LLM tokens.
-const BRAIN = path.join(root, "graphify-out", "brain.json");
-const CODEIX = path.join(root, "graphify-out", "brain.code.json");
+const BRAIN = path.join(root, ".brain", "graphify-out", "brain.json");
+const CODEIX = path.join(root, ".brain", "graphify-out", "brain.code.json");
 const writeAtomic = (f, s) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f + ".tmp", s); fs.renameSync(f + ".tmp", f); };
 // Every callable the code graph defines, by bare name -> up to 3 [file, line]; plus every code file.
 let codeIxMemo = null;
@@ -1930,7 +1931,7 @@ function brainLoad0() {
 }
 const brainNow = () => brainLoad();
 
-// ---------- flows: how the system works now (.memoir/FLOWS.md, `## F-<n> <name>`)
+// ---------- flows: how the system works now (.brain/FLOWS.md, `## F-<n> <name>`)
 const idNorm = (s) => String(s || "").toUpperCase().replace(/^F-0*(\d)/, "F-$1"); // F-001 = F-1
 const flowUnits = () => (B ? memFiles(false).flatMap(units).filter((u) => /^F-\d/.test(B.idOf(u.head) || "")) : []);
 const commitCache = new Map();
@@ -2167,10 +2168,10 @@ function flow(q, budget) {
     if (ns.length) { start = ns; why = (why ? why + "; " : "") + "starting at " + best.map(([nm]) => nm).join(", ") + (hits.length ? " (matched with " + hits.slice(0, 2).map((h) => rel(h.u.file) + ":" + h.u.line).join(", ") + ")" : ""); }
   }
   if (!start) {
-    out("[flow] no written flow matches" + (fu.length ? "" : " (this project has no .memoir/FLOWS.md yet)") + ", and the question names no symbol of the code graph. Try `memory.mjs flow \"Class.method\"` (an entry point: route, controller, screen, ViewModel) or `recall \"" + q + "\"`.");
+    out("[flow] no written flow matches" + (fu.length ? "" : " (this project has no .brain/FLOWS.md yet)") + ", and the question names no symbol of the code graph. Try `memory.mjs flow \"Class.method\"` (an entry point: route, controller, screen, ViewModel) or `recall \"" + q + "\"`.");
     return;
   }
-  say("[flow] not written yet: traced live from the code graph" + (why ? ", " + why : "") + staleNote() + ". After you understand it, write it as an `F-` entry in .memoir/FLOWS.md (memory skill) so the next question needs no tracing.");
+  say("[flow] not written yet: traced live from the code graph" + (why ? ", " + why : "") + staleNote() + ". After you understand it, write it as an `F-` entry in .brain/FLOWS.md (memory skill) so the next question needs no tracing.");
   const seen = new Set();
   const walk = (n, depth, pad) => {
     if (used > budget) return;
@@ -2199,20 +2200,20 @@ function stepFooter(one, several) {
 function memChangedUnits(all) {
   const us = memFiles(false).flatMap(units).filter((u) => !/STATUS\.md$/.test(u.file));
   if (all) return us;
-  let base = "main"; try { base = JSON.parse(read(".memoir/project.json") || "{}").base || "main"; } catch { /* default */ }
+  let base = "main"; try { base = JSON.parse(read(".brain/project.json") || "{}").base || "main"; } catch { /* default */ }
   const mb = spawnSync("git", ["merge-base", "HEAD", base], { cwd: root, encoding: "utf8" });
   const from = mb.status === 0 && mb.stdout.trim() && mb.stdout.trim() !== headSha() ? mb.stdout.trim() : "HEAD";
-  const d = spawnSync("git", ["diff", "-U0", from, "--", ".memoir"], { cwd: root, encoding: "utf8", maxBuffer: 64e6 });
+  const d = spawnSync("git", ["diff", "-U0", from, "--", ".brain"], { cwd: root, encoding: "utf8", maxBuffer: 64e6 });
   const hunks = new Map(); let cur = null;
   for (const l of (d.stdout || "").split("\n")) {
     const f = l.match(/^\+\+\+ b\/(.+)$/); if (f) { cur = f[1]; hunks.set(cur, []); continue; }
     const h = l.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/); if (h && cur) hunks.get(cur).push(hunkSpan(h));
   }
-  for (const f of (spawnSync("git", ["ls-files", "--others", "--exclude-standard", "--", ".memoir"], { cwd: root, encoding: "utf8" }).stdout || "").split("\n").filter(Boolean)) hunks.set(f, "all");
+  for (const f of (spawnSync("git", ["ls-files", "--others", "--exclude-standard", "--", ".brain"], { cwd: root, encoding: "utf8" }).stdout || "").split("\n").filter(Boolean)) hunks.set(f, "all");
   return us.filter((u) => { const hs = hunks.get(rel(u.file)); if (!hs) return false; if (hs === "all") return true; const b = u.line + u.body.length; return hs.some(([x, y]) => x <= b && y >= u.line); });
 }
-const CODE_ONLY = [":!.memoir", ":!graphify-out", ":!.claude", ":!*.md", ":!*.svg", ":!*.min.js", ":!*.map", ":!*.lock", ":!package-lock.json", ":!vendor", ":!**/vendor/**", ":!node_modules", ":!**/node_modules/**"];
-// Which names occur in the code (not in .memoir). Whole words: every identifier of the tracked code read once into a
+const CODE_ONLY = [":!.brain", ":!graphify-out", ":!.claude", ":!*.md", ":!*.svg", ":!*.min.js", ":!*.map", ":!*.lock", ":!package-lock.json", ":!vendor", ":!**/vendor/**", ":!node_modules", ":!**/node_modules/**"];
+// Which names occur in the code (not in .brain). Whole words: every identifier of the tracked code read once into a
 // set (a 300-name cap reported the rest of a big memory as missing: ebphtbv3 --all, 1,617 false [!]). Flags are
 // substrings: one `git grep -q` each, which stops at the first hit (one `-o` search took geotax 2 minutes).
 const scanCache = new Map();
@@ -2330,13 +2331,13 @@ function verifyMemory(all, budget) {
 // runtut sesuai flow"), not by grepping: what it is, modules, flows and where each starts, contracts, decisions in
 // force, the code memory names most. Then `flow "<feature>"`, and code only at the file:line it gives.
 function archLine() {
-  const t = stripComments(read(".memoir/ARCHITECTURE.md") || "").split(/\r?\n/);
+  const t = stripComments(read(".brain/ARCHITECTURE.md") || "").split(/\r?\n/);
   const pick = (re) => (t.find((l) => re.test(l)) || "").replace(/^[-*\s]*/, "").replace(/\*\*/g, "").trim();
   return [pick(/^\s*(?:[-*]\s*)?\**Platform\**\s*:/i), pick(/^\s*(?:[-*]\s*)?\**(Stack|Server|Backend|Frontend)\**\s*:/i)].filter(Boolean).map((s) => s.slice(0, 160)).join(" | ");
 }
 // The first MODULES.md table; the status column is found by its header name (`raw`: HTML comments kept, as the brief reads it).
 function moduleRows(raw) {
-  const t = read(".memoir/MODULES.md") || "", ml = (raw ? t : stripComments(t)).split(/\r?\n/);
+  const t = read(".brain/MODULES.md") || "", ml = (raw ? t : stripComments(t)).split(/\r?\n/);
   const t0 = ml.findIndex((l) => /^\|/.test(l)); if (t0 < 0) return [];
   const t1 = ml.findIndex((l, i) => i > t0 && !/^\|/.test(l));
   const table = ml.slice(t0, t1 < 0 ? undefined : t1).filter((l) => !/^\|\s*:?-/.test(l)).map((l) => l.split("|").slice(1, -1).map((c) => c.trim()));
@@ -2629,7 +2630,7 @@ try {
     case "recall": {
       need("question");
       const b = num("--budget", 1200), mb = Math.max(300, Math.round(b * 0.4));
-      out("## memory (.memoir)"); const used = printMemory(query, mb, flag("--all"));
+      out("## memory (.brain)"); const used = printMemory(query, mb, flag("--all"));
       out("## code (graph)" + staleNote()); if (fs.existsSync(GRAPH)) graphify(["query", query, "--budget", String(Math.max(300, b - used))]); else out("[code] no graph yet: use Grep/Glob.");
       break;
     }
@@ -2640,7 +2641,7 @@ try {
     case "uses": need("symbol"); uses(query, num("--budget", 1800), num("--depth", 1), flag("--all")); break;
     case "dead": dead(num("--top", 40)); break;
     case "debt": debt(); break;
-    case "infra": out(infra() || (fs.existsSync(path.join(MEM, "infra.md")) ? "infra: .memoir/infra.md is up to date" : "infra: nothing to index")); break;
+    case "infra": out(infra() || (fs.existsSync(path.join(MEM, "infra.md")) ? "infra: .brain/infra.md is up to date" : "infra: nothing to index")); break;
     case "lint": {
       const is = lint(); lintSaved(is);
       if (flag("--quiet")) { if (is.length) out("memory: " + is.length + " hygiene issue(s): run `node .claude/skills/memory/scripts/memory.mjs lint`"); break; }
@@ -2650,7 +2651,7 @@ try {
     }
     case "compact": {
       const m = compact(flag("--dry"));
-      out(m.length ? (flag("--dry") ? "would archive: " : "archived to .memoir/archive/DECISIONS.md: ") + m.join(", ") : "compact: nothing to archive (only superseded decisions older than 14 days and unused for 14 days move)");
+      out(m.length ? (flag("--dry") ? "would archive: " : "archived to .brain/archive/DECISIONS.md: ") + m.join(", ") : "compact: nothing to archive (only superseded decisions older than 14 days and unused for 14 days move)");
       break;
     }
     case "maintain": {
@@ -2666,7 +2667,7 @@ try {
       if (OFF.has("motion")) { NOT_HERE(cmd); break; }
       if (query && cmd === "flow") { flow(query, num("--budget", 1500)); break; }
       const fu = flowUnits(), bad = flowIssues();
-      if (!fu.length) { out("[flows] no F- entries in .memoir/FLOWS.md yet"); break; }
+      if (!fu.length) { out("[flows] no F- entries in .brain/FLOWS.md yet"); break; }
       for (const u of fu) { const c = bad.find((x) => keyOf(x.u) === keyOf(u)); out((c ? "OUT OF DATE " : "current     ") + rel(u.file) + ":" + u.line + "  " + u.head.slice(0, 100) + (c ? "\n  ! " + flowProblems(c).join("\n  ! ") : "")); }
       break;
     }

@@ -11,11 +11,11 @@ metadata:
 
 > **In this kit** (upstream: github.com/dnviti/artcraft-skills, main as of the 2026-10-30 commit; licence in
 > `.claude/NOTICE.md`; only this note and the description differ from upstream):
-> - Before the first node, the `design` skill's "Before ANY drawing" gate: `.memoir/design/proposal/research.md` passes
+> - Before the first node, the `design` skill's "Before ANY drawing" gate: `.brain/design/proposal/research.md` passes
 >   `library.mjs check`, and you read it, DESIGN.md (once chosen) and `library.mjs show` for every library entry the
 >   screen names. A designer or worker spawned only to draw in FigCraft does this too; no pack: stop and say so.
 > - The `designer` uses it for job 0's key screens. What to build and where to save comes from
->   `design/references/web-research.md` section 5 (`.memoir/design/proposal/proposal.figcraft`, PNGs in `screens/`).
+>   `design/references/web-research.md` section 5 (`.brain/design/proposal/proposal.figcraft`, PNGs in `screens/`).
 >   The design skill's anti-slop house rules, DESIGN.md and the boss's choices win over sections 2-3 here.
 > - Divergent directions: the kit's DESIGN card always carries a recommendation with its reason, and the boss still
 >   picks or hybridises; nothing is chosen for him. As a subagent, return the direction cards to the dev.

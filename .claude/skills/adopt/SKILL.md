@@ -1,13 +1,13 @@
 ---
 name: adopt
-description: "Adopt an existing codebase: build the graph, detect platform and stack, write .memoir (ARCHITECTURE, MODULES, BRIEF, FLOWS, STATUS, verify commands) from verified facts only. Use when the project has code but .memoir has no BRIEF or ARCHITECTURE."
+description: "Adopt an existing codebase: build the graph, detect platform and stack, write .brain (ARCHITECTURE, MODULES, BRIEF, FLOWS, STATUS, verify commands) from verified facts only. Use when the project has code but .brain has no BRIEF or ARCHITECTURE."
 ---
 
 # Adopt an existing project
 
 You do not understand the system until this is done. Never guess.
 
-1. Graph: `node .claude/skills/memory/scripts/memory.mjs graph` if `graphify-out/` is missing (multi-repo safe). Start with `graphify-out/GRAPH_REPORT.md` (the most connected nodes) and `node .claude/skills/memory/scripts/memory.mjs recall "<area>"` (plus `dead` for the health picture), then the README, package or build files and recent git history (`git log --oneline -30`). Do not read the whole codebase.
+1. Graph: `node .claude/skills/memory/scripts/memory.mjs graph` if `.brain/graphify-out/` is missing (multi-repo safe). Start with `.brain/graphify-out/GRAPH_REPORT.md` (the most connected nodes) and `node .claude/skills/memory/scripts/memory.mjs recall "<area>"` (plus `dead` for the health picture), then the README, package or build files and recent git history (`git log --oneline -30`). Do not read the whole codebase.
 2. Detect the platform (web, android, other) and the stack with versions. Write only facts you verified; load the matching platform skill.
 3. Write from verifiable facts only:
    - `ARCHITECTURE.md`: platform, stack, structure, data model, conformance checklist.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Local infrastructure index (no LLM, 0 tokens to build). Scans Docker, Compose, Kubernetes, Helm, Terraform,
-// Ansible, CI and Makefiles and writes a compact `.memoir/infra.md` of headings (one per service/resource) that
+// Ansible, CI and Makefiles and writes a compact `.brain/infra.md` of headings (one per service/resource) that
 // graphify then indexes, so dev can query "where is X deployed" cheaply instead of reading every infra file.
 // Idempotent: writes only when the content actually changes (no churn). No infra files -> writes nothing, exits 0.
 // Secret VALUES are never read or written; only variable NAMES. Run through: node .claude/skills/memory/scripts/memory.mjs infra
@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.argv[2] || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const SKIP = new Set(["node_modules", "vendor", "dist", "build", ".gradle", ".git", "graphify-out", ".memoir",
+const SKIP = new Set(["node_modules", "vendor", "dist", "build", ".gradle", ".git", "graphify-out", ".brain",
   ".claude", "coverage", ".playwright-mcp", ".taste-skill", "out"]);
 const files = [];
 (function walk(dir, depth) {
@@ -77,7 +77,7 @@ for (const f of files) {
   }
 }
 
-const out = path.join(root, ".memoir", "infra.md");
+const out = path.join(root, ".brain", "infra.md");
 if (!sections.length) {
   // nothing to index: do not create an empty file; remove a stale one so the graph stays honest
   try { if (fs.existsSync(out)) fs.rmSync(out); } catch { /* ignore */ }
@@ -93,4 +93,4 @@ try { current = fs.readFileSync(out, "utf8"); } catch { /* new */ }
 if (current === body) process.exit(0); // idempotent: no change, no write, no churn
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, body);
-console.log("infra index: " + sections.length + " resource(s) -> .memoir/infra.md");
+console.log("infra index: " + sections.length + " resource(s) -> .brain/infra.md");
