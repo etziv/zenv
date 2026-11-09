@@ -1,6 +1,6 @@
 {
   "base": "main",
-  "releaseMode": "commit-only",
+  "releaseMode": "merge",
   "mergeMethod": "squash",
   "ciWaitMinutes": 5,
   "verify": [
