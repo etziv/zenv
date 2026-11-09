@@ -61,12 +61,16 @@ certificates and the Service defined in the admin console. Source: the boss, 202
 Decision: code lives in private `etziv/zenv`; every ship pushes, opens a PR and squash-merges into `main`; the app is version 1.0.0.
 Source: the boss, 2026-11-09 ("buat dan versi sekarang adalah versi 1"); task 6.
 
-## D-017 Self-update with an encrypted read-only token [active] 2026-11-09
+## D-017 Self-update with an encrypted read-only token [superseded by D-018] 2026-11-09
 Decision: Zenv updates itself from a private GitHub source using a read-only token stored encrypted in the app (not yet built; design
 in a PROPOSAL card). Source: the boss, 2026-11-09 ("gunakan token read untuk update tpi tokennya dienkripsi").
 
+## D-018 No self-update for now [active] 2026-11-09
+Decision: Zenv has no self-update; builds are installed by hand (D-009). Options weighed for later: token in the exe (only obscured),
+DPAPI token pasted once, a public releases repo. Source: the boss, 2026-11-09 ("self update tidak perlu dulu deh, pikir nanti").
+
 ## Gotchas (max 30 lines; delete when no longer true)
-G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /R /D=C:\zenv`); the wrong order created a stray `C:\zenv R`.
+G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
 G-003 2026-11-06 Do not launch Zenv from a Claude Code shell: children inherit `CLAUDE_CODE_CHILD_SESSION` (transcripts off). Terminals and chats strip it; open Zenv from the Start menu.
 G-004 2026-11-06 Do not close the boss's running Zenv to install a build: check `zenv.exe` first and ask (the boss's rule).
