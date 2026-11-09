@@ -6,7 +6,7 @@ Updated: 2026-11-09
 - Adopted into the kit 2026-11-09: ARCHITECTURE, BRIEF, MODULES, FLOWS, DECISIONS, DESIGN written from the code; approved by the boss 2026-11-09.
 - Verify (2026-11-09): typecheck ok, Vitest 43/43, `npm run test:rust` 237 passed / 5 ignored, `cargo check` ok, `tailnet_e2e` 2/2.
 - Installed build in `C:\zenv`: 2026-11-09 16:59, version 1.0.0 (task 6), installed without `/R`.
-- Git: GitHub `etziv/zenv` (private) since 2026-11-09, release mode merge (D-016); history before 2026-11-09 is not in git.
+- Git: GitHub `etziv/zenv` (public since 2026-11-09), release mode merge (D-019); history before 2026-11-09 is not in git.
 
 ## Next steps
 - Vaultwarden on the tailnet: live 2026-11-09 (`svc:vaultwarden`, this PC `tag:server`; reached from another device). From this PC use
