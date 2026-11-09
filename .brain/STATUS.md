@@ -9,13 +9,9 @@ Updated: 2026-11-09
 - Git: GitHub `etziv/zenv` (private) since 2026-11-09, release mode merge (D-016); history before 2026-11-09 is not in git.
 
 ## Next steps
-- Vaultwarden on the tailnet: done 2026-11-09 through the Tailscale API (the boss allowed it, "aku izinkan"): policy has `tag:server`,
-  autoApprovers `svc:vaultwarden`, grant members -> svc:vaultwarden:443; Service `svc:vaultwarden` (tcp:443) defined; this PC tagged `tag:server`;
-  `D:\Hanif\vaultwarden\docker-compose.yml` DOMAIN = `https://vaultwarden.${TAILNET}`, TAILNET in `.env` written by `sync-domain.ps1` there
-  (follows a re-rolled tailnet name; task 3). Scheduled task "Vaultwarden tailnet domain" (logon + every 15 min) registered 2026-11-09 with the boss's OK;
-  proven: a stale TAILNET was restored by the task itself (sync-domain.log 15:47, result 0).
-  Opened in Zenv 2026-11-09 (loopback 9001; Service host `approved:auto`, `ready`); the boss opened it from another device ("oke bisa").
-  From this PC the URL times out (tagged, so not `autogroup:member` in the grant); use `vaultwarden.localhost` here. `SIGNUPS_ALLOWED` false (1 account).
+- Vaultwarden on the tailnet: live 2026-11-09 (`svc:vaultwarden`, this PC `tag:server`; reached from another device). From this PC use
+  `vaultwarden.localhost` (tagged, not `autogroup:member`). DOMAIN follows the tailnet name via `D:\Hanif\vaultwarden\sync-domain.ps1` and the
+  scheduled task "Vaultwarden tailnet domain" (logon + 15 min, proven 2026-11-09). `SIGNUPS_ALLOWED` false.
 - Studio chat: an end-to-end run in the Studio window (palette terminal screens, paste from Explorer, MCP toggle).
 
 ## Open issues
