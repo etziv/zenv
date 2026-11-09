@@ -1,0 +1,113 @@
+# .github/workflows/deploy.yml - CD through a SELF-HOSTED RUNNER installed on the server.
+# Recommended for office/intranet servers: the runner only needs OUTBOUND HTTPS (443) to GitHub,
+# no port is opened to the internet, no SSH key leaves the server. Use with PRIVATE repositories only.
+#
+# Started on purpose, never on every push: the boss approves the deploy (task.mjs deploy shows a
+# permission prompt, or he presses "Run workflow" in the Actions tab). A green ci run of the push to main for
+# exactly that commit counts as tested (its prebuild job also built the image); without one, or with input
+# retest, the tests run again on that commit. Then the server runs deploy.sh --ref <that commit>.
+# Replace PROJECT with the project slug (same as PROJECT in docker/deploy.sh) and the runner label.
+# When installing: pin every action to its full commit sha with the tag as a comment
+# (`uses: actions/checkout@<40-char sha> # v7.0.1`; sha from `gh api repos/actions/checkout/commits/v7.0.1 -q .sha`):
+# a tag can be re-pointed by whoever controls the publisher account.
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Full 40-char commit on main to deploy (empty = latest main; empty for a rollback)"
+        required: false
+        type: string
+      rollback:
+        description: "Roll back to the commit before the last deploy (skips tests)"
+        required: false
+        type: boolean
+        default: false
+      retest:
+        description: "Run the tests again even when ci already passed on main for this commit"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+    steps:
+      - id: pick
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          SHA="${INPUT_SHA:-$HEAD_SHA}"
+          echo "$SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "invalid sha: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  # The ci run of the merge (push to main) already tested this commit: reuse it instead of testing again.
+  verified:
+    needs: resolve
+    if: ${{ !inputs.rollback && !inputs.retest }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+    outputs:
+      found: ${{ steps.find.outputs.found }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          REPO: ${{ github.repository }}
+        # Only this repo's ci.yml run of a push to main for exactly this sha counts. Never a pull_request run:
+        # a fork PR's branch can be named main, and a PR head sha is not the merged commit.
+        run: |
+          match='[.workflow_runs[] | select(.event == "push" and .head_branch == "main" and .head_sha == $sha
+                  and .head_repository.full_name == $repo and .path == ".github/workflows/ci.yml")]'
+          found=false
+          for _ in $(seq 1 80); do   # waits up to 20 min while the run (and its prebuild) is still going
+            runs=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=push&branch=main&per_page=20")
+            ok=$(jq --arg sha "$SHA" --arg repo "$REPO" "$match | map(select(.conclusion == \"success\")) | length" <<< "$runs")
+            busy=$(jq --arg sha "$SHA" --arg repo "$REPO" "$match | map(select(.status != \"completed\")) | length" <<< "$runs")
+            if [ "$ok" -gt 0 ]; then found=true; break; fi
+            if [ "$busy" -eq 0 ]; then break; fi
+            sleep 15
+          done
+          echo "ci on main for $SHA passed: $found"
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: [resolve, verified]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && !inputs.rollback && needs.verified.outputs.found != 'true' }}
+    uses: ./.github/workflows/ci.yml
+    with:
+      sha: ${{ needs.resolve.outputs.sha }}
+
+  deploy:
+    needs: [resolve, verified, test]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && (inputs.rollback || needs.verified.outputs.found == 'true' || needs.test.result == 'success') }}
+    runs-on: [self-hosted, linux, deploy-PROJECT]
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Run deploy.sh on this server
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+          ROLLBACK: ${{ inputs.rollback }}
+        # The runner user is NOT in the docker group (that is root on the host) and owns nothing under
+        # /root/PROJECT or /home/PROJECT/src; one sudoers line lets it run exactly deploy.sh (BOSS-GUIDE.md).
+        run: |
+          if [ "$ROLLBACK" = "true" ]; then
+            sudo -n /root/PROJECT/deploy.sh --rollback
+          else
+            sudo -n /root/PROJECT/deploy.sh --ref "$SHA"
+          fi

@@ -1,0 +1,26 @@
+[workspace]
+members = [".", "core"]
+
+[package]
+name = "zenv"
+version = "0.1.0"
+description = "Local development environment manager"
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+name = "zenv_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+zenv-core = { path = "core" }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+tracing-appender = "0.2"

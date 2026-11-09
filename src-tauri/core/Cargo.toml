@@ -1,0 +1,53 @@
+[package]
+name = "zenv-core"
+version = "0.1.0"
+description = "Zenv domain logic: storage, runtimes, services, processes, config generation"
+edition = "2021"
+rust-version = "1.85"
+
+# Deliberately free of GUI dependencies so it can be tested on its own.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+thiserror = "2"
+rusqlite = { version = "0.40", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+minijinja = "2"
+sha2 = "0.10"
+toml_edit = "0.22"
+time = { version = "0.3", features = ["formatting", "parsing", "local-offset"] }
+dunce = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+ureq = { version = "3", default-features = false, features = ["native-tls", "json"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "pem", "ring", "x509-parser"] }
+x509-parser = "0.18"
+sevenz-rust2 = { version = "0.24", default-features = false, features = ["util"] }
+portable-pty = "0.9.0"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_Networking_WinSock",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_Shell",
+  "Win32_System_Registry",
+  "Win32_Security_Cryptography",
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Dwm",
+  "Win32_Security_WinTrust",
+  "Win32_Security_Cryptography_Catalog",
+  "Win32_Security_Cryptography_Sip",
+] }
+
+[dev-dependencies]
+tempfile = "3"

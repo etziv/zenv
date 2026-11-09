@@ -1,0 +1,69 @@
+# docker-compose.yml - compiled web service (Rust/Axum or Go) behind Caddy, BLUE-GREEN zero-downtime deploys.
+# Replace "myapp" with the project slug.
+#
+# ZERO-DOWNTIME: a compiled binary cannot be swapped in place. deploy.sh starts the idle color (app_blue or
+# app_green) on the new image NEXT TO the live one, checks it, writes upstream/active.caddy and runs
+# `caddy reload` (graceful: requests in flight finish on the old upstream), then stops the old color with
+# SIGTERM (the app finishes its in-flight requests). Only one color runs between deploys.
+#
+# BLUE_IMAGE / GREEN_IMAGE are set by deploy.sh to myapp:<commit>; rollback = the previous image on the idle
+# color (no rebuild). env_file is fine here: a compiled binary reads its env at start and every deploy starts
+# a fresh color. It is /root/<project>/.env (next to this file), never in the source checkout.
+x-app: &app
+    restart: unless-stopped
+    env_file:
+        - ${ENV_FILE:-.env}
+    environment:
+        APP_ADDR: "0.0.0.0:8080"
+    stop_grace_period: 30s
+    healthcheck:
+        test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost:8080/health || exit 1"]
+        interval: 10s
+        timeout: 3s
+        retries: 3
+        start_period: 60s
+        start_interval: 1s     # probe every second while starting (Docker Engine >= 25; older: remove the line)
+    networks:
+        - myapp
+        # - db    # database in another compose project on this host: see networks below
+
+services:
+    proxy:
+        image: ${CADDY_IMAGE:?deploy.sh sets it (pinned by digest)}
+        container_name: myapp-proxy
+        restart: unless-stopped
+        ports:
+            # Docker publishes around ufw/iptables: the bind address IS the firewall. Loopback by default;
+            # APP_BIND in .env = the LAN address clients call, or keep loopback behind a host proxy.
+            - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
+        volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            # a folder, not a file: deploy.sh replaces active.caddy (rename) and the proxy sees it
+            - ./upstream:/etc/caddy/upstream:ro
+            - caddy-data:/data
+            - caddy-config:/config
+        networks:
+            - myapp
+
+    app_blue:
+        <<: *app
+        image: ${BLUE_IMAGE:-myapp:none}
+        container_name: myapp-blue
+
+    app_green:
+        <<: *app
+        image: ${GREEN_IMAGE:-myapp:none}
+        container_name: myapp-green
+
+volumes:
+    caddy-data:
+    caddy-config:
+
+networks:
+    myapp:
+        driver: bridge
+    # The database container's existing network, declared so EVERY recreate keeps the route (a manual
+    # `docker network connect` is lost on the next deploy). Only the app colors join it, not the proxy.
+    # db:
+    #     external: true
+    #     name: ${DB_NETWORK:?set DB_NETWORK in .env to the database container network}

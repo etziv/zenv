@@ -1,0 +1,11 @@
+{
+  "base": "main",
+  "releaseMode": "commit-only",
+  "mergeMethod": "squash",
+  "ciWaitMinutes": 5,
+  "verify": [
+    { "name": "build", "run": "" },
+    { "name": "lint", "run": "" },
+    { "name": "test", "run": "" }
+  ]
+}

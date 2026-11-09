@@ -1,0 +1,79 @@
+# .github/workflows/deploy.yml - CD over SSH from a GitHub-hosted runner.
+# Only when the server is reachable from the internet. The key is a dedicated ed25519 deploy key
+# whose authorized_keys entry is locked to deploy-ssh-gate.sh (it can run nothing else), and the
+# server host key is pinned (no StrictHostKeyChecking=no).
+# GitHub Secrets (names only; the boss adds the values): DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER,
+# DEPLOY_KNOWN_HOSTS (output of: ssh-keyscan -t ed25519 <host>).
+#
+# Started on purpose, never on every push: the boss approves the deploy (task.mjs deploy shows a
+# permission prompt, or he presses "Run workflow" in the Actions tab).
+# When installing: pin every action to its full commit sha with the tag as a comment
+# (`uses: actions/checkout@<40-char sha> # v7.0.1`; sha from `gh api repos/actions/checkout/commits/v7.0.1 -q .sha`):
+# a tag can be re-pointed by whoever controls the publisher account.
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Full 40-char commit on main to deploy (empty = latest main; empty for a rollback)"
+        required: false
+        type: string
+      rollback:
+        description: "Roll back to the commit before the last deploy (skips tests)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+    steps:
+      - id: pick
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          SHA="${INPUT_SHA:-$HEAD_SHA}"
+          echo "$SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "invalid sha: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve
+    if: ${{ !inputs.rollback }}
+    uses: ./.github/workflows/ci.yml
+    with:
+      sha: ${{ needs.resolve.outputs.sha }}
+
+  deploy:
+    needs: [resolve, test]
+    if: ${{ always() && needs.resolve.result == 'success' && (needs.test.result == 'success' || inputs.rollback) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Run deploy.sh on the server
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+          ROLLBACK: ${{ inputs.rollback }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_USER }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          if [ "$ROLLBACK" = "true" ]; then CMD="deploy --rollback"; else CMD="deploy --ref $SHA"; fi
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$USER_NAME@$HOST" "$CMD"
+          rm -f ~/.ssh/deploy_key

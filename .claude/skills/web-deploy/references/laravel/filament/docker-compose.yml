@@ -1,0 +1,160 @@
+# docker-compose.yml - Laravel + Filament (tanpa websocket/Reverb).
+# Ganti semua "myapp" dengan slug project.
+#
+# Catatan: SENGAJA tidak pakai Octane worker mode (lihat header Dockerfile).
+# Plain FrankenPHP php-server: per-request boot, hindari state leak Filament.
+#
+# ============================================================================
+# KONFIG ENV (deploy.sh v2, zero-downtime): service app TIDAK memakai env_file.
+# Laravel membaca /app/.env langsung (file yang sama, lewat bind-mount), jadi
+# ganti nilai .env cukup refresh config cache - TANPA recreate container.
+# Kalau env_file dipakai, nilai di environment container MENANG atas .env
+# (Dotenv immutable) sehingga config:cache tetap membaca nilai lama sampai
+# container di-recreate. Block `environment:` di bawah hanya untuk var
+# kontrol (RUN_*) dan topologi tetap; nilainya menang atas .env.
+# ${...} di file ini (port, build args) tetap dibaca dari --env-file saat
+# compose di-parse; mengubahnya = compose recreate service itu saja.
+# Catatan: kode yang memakai getenv() langsung (bukan env()/config()) tidak
+# melihat isi .env; pakai config() di aplikasi.
+#
+# BIND-MOUNT SOURCE: /app di-mount dari ${SRC_DIR} server (di-set deploy.sh) ->
+# perubahan kode langsung kelihatan container TANPA rebuild image. storage &
+# bootstrap/cache tetap NAMED VOLUME supaya tidak ketiban bind-mount & persisten.
+# (Pasangkan dengan opcache.validate_timestamps=1 + deploy.sh auto-detect.)
+# ============================================================================
+x-app-volumes: &app-volumes
+    - type: bind
+      source: ${SRC_DIR:-..}
+      target: /app
+    - app-storage:/app/storage
+    - app-bootstrap-cache:/app/bootstrap/cache
+
+services:
+    app:
+        build:
+            # context = lokasi source. Default ".." (compose di docker/),
+            # di server di-override lewat BUILD_CONTEXT (di-set deploy.sh).
+            context: ${BUILD_CONTEXT:-..}
+            dockerfile: docker/Dockerfile
+            args:
+                CACHEBUST: ${CACHEBUST:-1}
+        image: myapp:latest
+        container_name: myapp-app
+        restart: unless-stopped
+        ports:
+            # Docker publishes around ufw: APP_BIND in .env IS the firewall (LAN IP users open, or loopback).
+            - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
+        environment:
+            RUN_MIGRATIONS: "true"
+            # Aktifkan kalau pakai bezhansalleh/filament-shield.
+            RUN_SHIELD: "false"
+        volumes: *app-volumes
+        depends_on:
+            myapp-redis:
+                condition: service_started
+            mysql:
+                condition: service_healthy
+                required: false
+        mem_limit: 1g
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8080/up"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+        networks:
+            - myapp
+
+    scheduler:
+        image: myapp:latest
+        container_name: myapp-scheduler
+        restart: unless-stopped
+        command: ["php", "artisan", "schedule:work"]
+        healthcheck:
+            # Tanpa port: cukup pastikan prosesnya hidup (healthcheck bawaan image FrankenPHP
+            # mengecek :2019 dan selalu gagal di container sidecar).
+            test: ["CMD-SHELL", "pgrep -f 'schedule:work' >/dev/null || exit 1"]
+            interval: 60s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+        environment:
+            RUN_MIGRATIONS: "false"
+            RUN_SHIELD: "false"
+        volumes: *app-volumes
+        depends_on:
+            app:
+                condition: service_started
+        networks:
+            - myapp
+
+    # Queue worker - butuh kalau QUEUE_CONNECTION=database/redis (Filament
+    # export/import, notification, dll pakai queue). Hapus kalau QUEUE=sync.
+    queue:
+        image: myapp:latest
+        container_name: myapp-queue
+        restart: unless-stopped
+        command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=600", "--max-time=3600"]
+        healthcheck:
+            test: ["CMD-SHELL", "pgrep -f 'queue:work' >/dev/null || exit 1"]
+            interval: 60s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+        environment:
+            RUN_MIGRATIONS: "false"
+            RUN_SHIELD: "false"
+        volumes: *app-volumes
+        depends_on:
+            app:
+                condition: service_started
+        networks:
+            - myapp
+
+    # Redis untuk cache + queue. Naming dipakai sebagai service DNS di compose.
+    myapp-redis:
+        image: redis:7-alpine
+        container_name: myapp-redis
+        restart: unless-stopped
+        volumes:
+            - redis-data:/data
+        networks:
+            - myapp
+
+    # MySQL internal - opsional. Aktifkan: docker compose --profile internal-db up
+    # Kalau pakai MySQL external (di host atau server lain), profile ini gak
+    # akan jalan, app langsung connect ke DB_HOST yang di-set di .env.
+    # NB: block environment: di sini untuk image mysql (bukan app), nilainya
+    # di-interpolasi dari --env-file saat parse compose - biarkan apa adanya.
+    mysql:
+        # 8.4 LTS (8.0 is end of life since 2026-04); mysql_native_password is off by default in 8.4
+        image: mysql:8.4
+        container_name: myapp-mysql
+        restart: unless-stopped
+        profiles: ["internal-db"]
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE:-myapp}
+            MYSQL_USER: ${DB_USERNAME:-myapp}
+            MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+        ports:
+            - "127.0.0.1:${DB_FORWARD_PORT:-3307}:3306"   # loopback only: Docker bypasses ufw
+        volumes:
+            - mysql-data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-rootsecret}"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+        networks:
+            - myapp
+
+volumes:
+    mysql-data:
+    redis-data:
+    app-storage:
+    app-bootstrap-cache:
+
+networks:
+    myapp:
+        driver: bridge

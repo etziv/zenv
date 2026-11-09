@@ -1,0 +1,22 @@
+# Caddyfile - reverse proxy in front of the live color (blue-green, see docker-compose.yml).
+# deploy.sh writes upstream/active.caddy ("to app_blue:8080" or "to app_green:8080") and runs `caddy reload`;
+# it validates a changed Caddyfile (caddy validate) before it replaces the live one.
+# TLS: ADD a site block for your domain that imports the same snippet (below, commented) and publish 80/443 in
+# compose; Caddy then gets and renews the certificate itself. Keep the :8080 block: deploy.sh checks the switch
+# through it (http://localhost:8080/health inside the proxy). Behind an existing proxy, plain HTTP is enough.
+(live_app) {
+	reverse_proxy {
+		import /etc/caddy/upstream/active.caddy
+		# A request that hits a closing connection during the switch is retried, not failed.
+		lb_try_duration 5s
+		lb_try_interval 100ms
+	}
+}
+
+:8080 {
+	import live_app
+}
+
+# app.example.go.id {
+# 	import live_app
+# }

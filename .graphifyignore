@@ -1,0 +1,14 @@
+# graphify (AST, no LLM). Code AND the .memoir headings are indexed: a markdown heading becomes a node with its file
+# and line, so `graphify query` can say where a decision, module or contract lives. Temporary memory and tooling
+# stay out.
+.memoir/handoff/
+.memoir/archive/
+.memoir/design/proposal/*.html
+.claude/
+graphify-out/
+node_modules/
+vendor/
+dist/
+build/
+.gradle/
+coverage/

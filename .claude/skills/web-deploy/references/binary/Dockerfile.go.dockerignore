@@ -1,0 +1,15 @@
+# Copy to docker/Dockerfile.dockerignore: BuildKit reads <Dockerfile>.dockerignore next to the Dockerfile
+# (context = repo root). ALLOW-LIST: everything is out unless named; add what the Dockerfile needs
+# (migrations/, templates/, ...). Gitignored private data, .env and .git/ never reach the build.
+**
+!go.mod
+!go.sum
+!*.go
+!cmd/
+!internal/
+!pkg/
+# Uncomment what the project has (other package dirs, //go:embed folders):
+# !web/
+# !migrations/
+**/.env
+**/.env.*

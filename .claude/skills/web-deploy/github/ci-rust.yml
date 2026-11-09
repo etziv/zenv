@@ -1,0 +1,67 @@
+# .github/workflows/ci.yml for a Rust (Axum) project. Same interface as the Laravel ci.yml:
+# runs on pull requests (task.mjs waits for it before merging), on every push to main (then the `prebuild` job
+# builds that commit's image on the server, so the deploy only switches) and via workflow_call from deploy.yml
+# when the deploy re-tests (no green push run for the sha, or input retest). Verify action major versions against their docs when installing.
+# When installing: pin every action to its full commit sha with the tag as a comment
+# (`uses: actions/checkout@<40-char sha> # v7.0.1`; sha from `gh api repos/actions/checkout/commits/v7.0.1 -q .sha`):
+# a tag can be re-pointed by whoever controls the publisher account.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+    inputs:
+      sha:
+        description: commit to test
+        required: true
+        type: string
+
+# A newer PR push cancels the older run; main and deploy runs (event workflow_dispatch via workflow_call) never.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+
+      - name: Toolchain
+        # rustup is preinstalled on GitHub runners: it reads rust-toolchain.toml (put clippy and rustfmt in its
+        # components). No third-party toolchain action (dtolnay/rust-toolchain@master is a moving branch).
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked
+
+  # Image for this main commit, built on the production server right after the merge: the approved deploy then
+  # only starts the idle color and switches (~20 s). ONLY push to main: a pull_request job on this label would run
+  # PR code on the production host. deploy.sh --build-only touches nothing live and waits for a running deploy.
+  # Deploying with deploy-ssh.yml (no runner on the server): delete this job.
+  prebuild:
+    needs: test
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, linux, deploy-PROJECT]
+    timeout-minutes: 30
+    steps:
+      - name: Build the image on the server
+        env:
+          SHA: ${{ github.sha }}
+        run: sudo -n /root/PROJECT/deploy.sh --build-only --ref "$SHA"

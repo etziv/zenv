@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@import "@fontsource/chakra-petch/500.css";
+@import "@fontsource/chakra-petch/600.css";
+@import "@fontsource-variable/ibm-plex-sans";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * "Front panel": a black header bar that carries navigation and live port
+ * LEDs, over a quiet dot-grid work surface. Surfaces are neutral black/grey;
+ * green is only an accent, and the bright LED green is reserved for things
+ * that are actually live (running services, active tab).
+ */
+:root {
+  --background: #f4f5f5;
+  --foreground: #111314;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: #0b8a65;
+  --primary-foreground: #f4fffa;
+  --secondary: #eceeee;
+  --secondary-foreground: #1a1d1e;
+  --muted: #eeefef;
+  --muted-foreground: #60666a;
+  --accent: #e8eaea;
+  --accent-foreground: var(--foreground);
+  --destructive: #d23f31;
+  --success: #12935f;
+  --warning: #b7791f;
+  --border: #dfe2e3;
+  --input: #d3d7d9;
+  --ring: #0b8a65;
+  --grid-dot: rgb(17 19 20 / 0.07);
+
+  /* Header panel: the same in light and dark. */
+  --panel: #0a0b0b;
+  --panel-raised: #161818;
+  --panel-foreground: #d9dddc;
+  --panel-muted: #8a908e;
+  --panel-line: #232626;
+  --led: #3ee8a0;
+  --led-fail: #ff5a4a;
+
+  --radius: 0.375rem;
+  color-scheme: light;
+}
+
+/* Dark: when the system is dark and the user has not picked light, or when
+   the user picked dark (data-theme is set from Settings / the header). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #08090a;
+    --foreground: #e8eaea;
+    --card: #15181a;
+    --popover: #1a1d1f;
+    --primary: #3ddc97;
+    --primary-foreground: #04140d;
+    --secondary: #1d2022;
+    --secondary-foreground: #e2e5e4;
+    --muted: #1b1e20;
+    --muted-foreground: #9399a0;
+    --accent: #23272a;
+    --destructive: #f2685b;
+    --success: #4fd99a;
+    --warning: #e6ad4c;
+    --border: #2b2f32;
+    --input: #363b3e;
+    --ring: #3ddc97;
+    --grid-dot: rgb(232 234 234 / 0.05);
+    --panel: #050606;
+    --panel-raised: #141617;
+    --panel-line: #212426;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #08090a;
+  --foreground: #e8eaea;
+  --card: #15181a;
+  --popover: #1a1d1f;
+  --primary: #3ddc97;
+  --primary-foreground: #04140d;
+  --secondary: #1d2022;
+  --secondary-foreground: #e2e5e4;
+  --muted: #1b1e20;
+  --muted-foreground: #9399a0;
+  --accent: #23272a;
+  --destructive: #f2685b;
+  --success: #4fd99a;
+  --warning: #e6ad4c;
+  --border: #2b2f32;
+  --input: #363b3e;
+  --ring: #3ddc97;
+  --grid-dot: rgb(232 234 234 / 0.05);
+  --panel: #050606;
+  --panel-raised: #141617;
+  --panel-line: #212426;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-muted: var(--panel-muted);
+  --color-panel-line: var(--panel-line);
+  --color-led: var(--led);
+  --color-led-fail: var(--led-fail);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --font-sans: "IBM Plex Sans Variable", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Chakra Petch", "IBM Plex Sans Variable", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+
+@keyframes zenv-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+.status-pulse {
+  animation: zenv-pulse 2.4s ease-in-out infinite;
+}
+
+/* A bar for work without a percentage (unpacking, npm install). */
+@keyframes zenv-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.install-indeterminate {
+  animation: zenv-indeterminate 1.4s ease-in-out infinite;
+}
+
+/* A lit LED: solid core with a soft glow. */
+.led-on {
+  background: var(--led);
+  box-shadow: 0 0 0 1px rgb(62 232 160 / 0.25), 0 0 8px rgb(62 232 160 / 0.55);
+}
+
+.led-fail {
+  background: var(--led-fail);
+  box-shadow: 0 0 0 1px rgb(255 90 74 / 0.25), 0 0 8px rgb(255 90 74 / 0.5);
+}
+
+.led-off {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--panel-muted);
+}
+
+/* The trace under the header: lit in the middle, fading to the edges. */
+.panel-trace {
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--led) 45%, transparent) 30%, color-mix(in oklab, var(--led) 45%, transparent) 70%, transparent);
+}
+
+/* Engineering-paper work surface. */
+.dot-grid {
+  background-color: var(--background);
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size: 18px 18px;
+  background-position: -9px -9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-pulse {
+    animation: none;
+    opacity: 0.35;
+    transform: scale(1.8);
+  }
+  .install-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 14px;
+    font-feature-settings: "ss02";
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent) transparent;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+}

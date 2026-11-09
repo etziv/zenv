@@ -1,0 +1,58 @@
+# .github/workflows/ci.yml - CI: test every pull request (and a given commit when deploy.yml calls it).
+# task.mjs (releaseMode merge) waits for this check before merging; deploy.yml runs it again on the
+# exact commit it deploys. Adjust PHP version/extensions to composer.lock and the Dockerfile.
+# Verify action major versions against their docs when installing this file.
+# When installing: pin every action to its full commit sha with the tag as a comment
+# (`uses: actions/checkout@<40-char sha> # v7.0.1`; sha from `gh api repos/actions/checkout/commits/v7.0.1 -q .sha`):
+# a tag can be re-pointed by whoever controls the publisher account.
+name: ci
+
+on:
+  pull_request:
+  workflow_call:
+    inputs:
+      sha:
+        description: commit to test
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pcntl, pdo_mysql, pdo_sqlite, bcmath, intl, zip, gd, redis, exif
+          coverage: none
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare .env (test values only, never secrets)
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+
+      - uses: actions/setup-node@v7
+        if: hashFiles('package-lock.json') != ''
+        with:
+          node-version: "26"
+          cache: npm
+
+      - name: Build frontend
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci && npm run build
+
+      # Tests use phpunit.xml (Laravel default: sqlite in memory). A project that needs MySQL adds a
+      # `services: mysql` block here and the DB_* env for this step.
+      - name: Tests
+        run: php artisan test

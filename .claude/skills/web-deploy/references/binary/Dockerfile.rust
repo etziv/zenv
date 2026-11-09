@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+# Dockerfile - Rust (Axum) web service. Copy to docker/Dockerfile. Multi-stage: compile with cargo caches, ship a small runtime.
+# BIN = binary name from Cargo.toml ([[bin]] name or the package name).
+# Prefer rustls over native-tls/openssl in Cargo.toml; then the runtime needs no OpenSSL.
+# The context is the repo root, filtered by docker/Dockerfile.dockerignore (allow-list, copy
+# Dockerfile.rust.dockerignore): gitignored private data never enters the build. rust-toolchain.toml, when
+# present, pins the toolchain (rustup in the base image installs it on first use).
+
+FROM rust:1-slim-trixie AS build
+ARG BIN=app
+# Compiler jobs: the build shares the server with production (and maybe its database). deploy.sh sets it.
+ARG BUILD_JOBS=4
+WORKDIR /src
+# pkg-config + libssl-dev only matter for crates that link OpenSSL; harmless otherwise.
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY . .
+# Cache mounts keep the registry and target/ between builds on the same server: a code change
+# recompiles only your crate, not every dependency.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/src/target \
+    cargo build --release --locked -j "${BUILD_JOBS}" --bin "${BIN}" \
+    && cp "target/release/${BIN}" /app-bin
+
+FROM debian:trixie-slim AS app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --no-create-home app
+COPY --from=build /app-bin /usr/local/bin/app
+USER app
+ENV APP_ADDR=0.0.0.0:8080
+EXPOSE 8080
+# Exec form: the binary is PID 1 and receives SIGTERM directly (graceful shutdown, see SKILL.md).
+CMD ["/usr/local/bin/app"]

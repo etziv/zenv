@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.84",
+        "--config",
+        ".claude/scripts/playwright-mcp.json",
+        "--isolated",
+        "--headless",
+        "--idle-timeout",
+        "300000",
+        "--output-dir",
+        ".playwright-mcp"
+      ]
+    },
+    "figcraft": {
+      "command": "node",
+      "args": [
+        ".claude/scripts/figcraft-mcp.mjs"
+      ]
+    }
+  }
+}

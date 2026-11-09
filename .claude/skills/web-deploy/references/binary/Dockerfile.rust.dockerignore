@@ -1,0 +1,16 @@
+# Copy to docker/Dockerfile.dockerignore: BuildKit reads <Dockerfile>.dockerignore next to the Dockerfile
+# (context = repo root). ALLOW-LIST: everything is out unless named; add what the Dockerfile COPYs
+# (migrations/, assets/, ...). Gitignored private data, .env, target/ and .git/ never reach the build.
+**
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!src/
+!crates/
+# Uncomment what the project has:
+# !build.rs
+# !.cargo/
+# !.sqlx/
+# !migrations/
+**/.env
+**/.env.*
