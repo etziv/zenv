@@ -52,7 +52,8 @@ Keep the boss's view on the work: after each import or frame, `page.select` + `v
    as in FigCraft. Self-test: `python scripts/figrest.py out.json`.
 2. `write_document('proposal.rest.json', name, pages)` (keep the JSON gitignored; the generator is the source).
 3. Live: `run_command file.close {index, force}` for stale tabs, then `open_file proposal.rest.json` (new tab,
-   returns page ids and `warnings`). Headless: `figcraft-cli convert in.json out.figcraft` then
+   returns page ids and `warnings`). Headless (a scratch check in `tmp/` only; what the boss is meant to see is opened
+   in his window, as above): `figcraft-cli convert in.json out.figcraft` then
    `figcraft-cli render --out page.png out.figcraft` and `figcraft-cli info out.figcraft` (lists missing fonts).
 4. ONE `batch` right after import: vector paths (`vector_batch(page_ids)` gives the commands: `node.find` by name
    per page `as: ref`, then `node.set {ids: {"$ref": ref, "field": "ids"}, path, width, height}`). This first edit
@@ -77,7 +78,8 @@ otherwise and prints what is missing.
   boss's screen and joins it by itself (no click; `--no-viewer` prints the link only). The agent's cursor glides to
   every part it builds, a chat label beside it says what it is doing, and the view follows (spotlight). 20 frames
   took 5 s at `--pace 0.5`, 61 steps 28 s at `--pace 1`. `--hold 60` keeps the session open after.
-- Without `--live`: fast (61 steps in under 0.1 s), for rebuilds nobody watches.
+- Without `--live`: fast (61 steps in under 0.1 s), for rebuilds nobody watches; the result the boss reviews is
+  still opened in his window afterwards (`open_file`).
 - Plan: `{"research": ".brain/design/proposal/research.md", "app": true (pack checked with --app), "save":
   ".brain/design/proposal/proposal.figcraft", "open": "<optional .figcraft or figrest .json>", "steps": [...]}`; a step
   is `{"label", "screen": "<### name in the pack>", "state": "empty|loading|error" (none = default), ...}` plus one of

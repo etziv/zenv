@@ -29,7 +29,10 @@ choose from at a glance. You research and propose; the main dev builds.
    -> PNGs of every frame in `screens/` and the verify loop. figlive runs its own FigCraft engine, so a down
    `figcraft` MCP is no reason to stop; if figlive itself fails, STOP and report the error; never switch to HTML
    instead. The HTML page is an extra view of the same screens, never a replacement. Never publish an artifact;
-   hand over the paths.
+   hand over the paths. The boss looks at the design in the FigCraft window, never in a file he has to find
+   (boss 2026-11-09: "gimana mau lihat desainnya kalau headless"): a headless `figcraft-cli convert/render` or a
+   figlive run without `--live` is only a scratch check in `tmp/`; you finish with `proposal.figcraft` open in his
+   window (`figlive --live` with `"open"`, or the figcraft `open_file` tool) and say so in your report.
 
 ## Rules
 - Taste comes from the subject and the users, confirmed by the research; never a default look, never a trend

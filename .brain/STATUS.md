@@ -9,8 +9,11 @@ Updated: 2026-11-09
 - Git: the `[setup] initial commit` holds all code as of 2026-11-09; earlier history is not in git.
 
 ## Next steps
-- Vaultwarden on the tailnet: the boss sets the policy (`tag:server`, autoApprovers, grant), defines `svc:vaultwarden`, tags this PC;
-  then Open on tailnet with Own name, set Vaultwarden `DOMAIN` to `https://vaultwarden.caracal-alnair.ts.net`, restart it, set `SIGNUPS_ALLOWED` false after signup.
+- Vaultwarden on the tailnet: done 2026-11-09 through the Tailscale API (the boss allowed it, "aku izinkan"): policy has `tag:server`,
+  autoApprovers `svc:vaultwarden`, grant members -> svc:vaultwarden:443; Service `svc:vaultwarden` (tcp:443) defined; this PC tagged `tag:server`;
+  `D:\Hanif\vaultwarden\docker-compose.yml` DOMAIN = `https://vaultwarden.caracal-alnair.ts.net`, container recreated.
+  Opened in Zenv 2026-11-09 (loopback 9001; Service host `approved:auto`, `ready`; DNS -> 100.101.202.251). From this PC the URL times out
+  (it is tagged, so not `autogroup:member` in the grant). Left: open it from another device; `SIGNUPS_ALLOWED` false after signup.
 - Studio chat: an end-to-end run in the Studio window (palette terminal screens, paste from Explorer, MCP toggle).
 
 ## Open issues
@@ -18,4 +21,6 @@ Updated: 2026-11-09
 - Possible bug (found by qa 2026-11-09, unfixed): `ServiceManager.running_rivals` also returns non-web services, so `Core.start_service`
   can pick a database on the same port as a web server's front (`rivals.first()`); the front then forwards nothing. Only when a database shares the web port.
 - No automated test for the tray panel (M18).
+- 2026-11-09: Start MySQL 9.7 failed "port 3306 in use by mysqld.exe": Zenv's own mysqld (same `--defaults-file`, started 2026-11-06,
+  parent process gone) outlived its Zenv; shut down with `mysqladmin shutdown`. Cause unknown (the Job Object should kill it); Zenv does not detect its own leftover.
 - Code signing / self-update for a public release undecided (BRIEF open questions).
