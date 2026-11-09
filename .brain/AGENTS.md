@@ -14,7 +14,7 @@ If you are not Claude Code reading `.claude/CLAUDE.md`, read this first.
 Ask memory and the code graph in one call before reading many files:
 `node .claude/skills/memory/scripts/memory.mjs recall "<topic>"` (no LLM, no server; `mem` = memory only,
 `find` = code only). Who uses a symbol: `memory.mjs uses "X"` (complete, graph-certain callers
-first; `--depth 2` before a change), not grep. `.brain/infra.md` answers "where is X deployed".
+first; `--depth 2` before a change), not grep. The generated infra.md next to this file (only when the project has deploy files) answers "where is X deployed".
 The full memory rules are in `.claude/skills/memory/SKILL.md`.
 
 ## As you work, write back to `.brain/`
