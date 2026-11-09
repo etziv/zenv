@@ -57,14 +57,23 @@ Decision: only the SVGs mapped in `fileIcons.ts` are copied to `public/file-icon
 Decision: an app may be a Service (`https://<svc>.<tailnet>.ts.net`, migration 0014); the port mode stays. Needs a tagged host, HTTPS
 certificates and the Service defined in the admin console. Source: the boss, 2026-11-09 ("coba tailscale service tambahkan").
 
+## D-016 Private GitHub repo etziv/zenv, release mode merge, version 1.0.0 [active] 2026-11-09
+Decision: code lives in private `etziv/zenv`; every ship pushes, opens a PR and squash-merges into `main`; the app is version 1.0.0.
+Source: the boss, 2026-11-09 ("buat dan versi sekarang adalah versi 1"); task 6.
+
+## D-017 Self-update with an encrypted read-only token [active] 2026-11-09
+Decision: Zenv updates itself from a private GitHub source using a read-only token stored encrypted in the app (not yet built; design
+in a PROPOSAL card). Source: the boss, 2026-11-09 ("gunakan token read untuk update tpi tokennya dienkripsi").
+
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /R /D=C:\zenv`); the wrong order created a stray `C:\zenv R`.
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
 G-003 2026-11-06 Do not launch Zenv from a Claude Code shell: children inherit `CLAUDE_CODE_CHILD_SESSION` (transcripts off). Terminals and chats strip it; open Zenv from the Start menu.
 G-004 2026-11-06 Do not close the boss's running Zenv to install a build: check `zenv.exe` first and ask (the boss's rule).
 G-005 2026-11-09 Do not filter Claude transcript entries by type before walking `parentUuid`: `attachment` entries are links in the chain (`transcript_lines`).
-G-006 2026-11-06 Do not run Vitest while a cargo build runs: its workers time out ("Timeout waiting for worker"); run it afterwards.
+G-006 2026-11-06 Do not run Vitest while a cargo build runs (also right after a Cargo.toml edit, likely rust-analyzer's rebuild): workers time out ("Timeout waiting for worker"); rerun once it settles.
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
+G-011 2026-11-09 Do not debug a one-off rustc "crate `X` required in rlib format" or "can't find crate for `std`" as code: rerun (passed each time; cause unproven, likely antivirus file locks).
 G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use".
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).

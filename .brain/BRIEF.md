@@ -40,6 +40,6 @@ Later:
 - The boss uses Claude Max through the official Claude Code CLI; Zenv never stores Anthropic credentials.
 
 ## Open questions
-- Public release: code signing (SignPath, Certum OSS, Azure Trusted Signing) and Zenv self-update are undecided.
+- Public release: code signing (SignPath, Certum OSS, Azure Trusted Signing) undecided; self-update decided by the boss 2026-11-09 (D-017).
 - Is the macOS port still wanted, and when?
 - Should Caddy become a front server (README "Not built yet")?

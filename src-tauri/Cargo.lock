@@ -5662,7 +5662,7 @@ dependencies = [
 
 [[package]]
 name = "zenv"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "tauri",
@@ -5677,7 +5677,7 @@ dependencies = [
 
 [[package]]
 name = "zenv-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "dunce",
