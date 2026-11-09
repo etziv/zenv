@@ -312,8 +312,10 @@ function setupCommit() {
   // updates made now simply ship with that task. Handoffs and archives are never setup files.
   const cur = currentBranch();
   if (cur.startsWith("task/")) { console.log("task branch " + cur + " is open: framework changes will ship with that task (nothing committed now)."); return; }
+  // ...except a file moved from .memoir by the .brain migration (task 29): its old path is tracked now or was one commit ago
+  const moved = new Set(["HEAD", "HEAD~1"].flatMap((c) => git(["ls-tree", "-r", "--name-only", c, "--", ".memoir/handoff", ".memoir/archive"]).out.split("\n")));
   const dirty = dirtyFiles().filter((f) => SETUP_PATHS.some((p) => f === p || f.startsWith(p + "/"))
-    && !f.startsWith(".brain/handoff/") && !f.startsWith(".brain/archive/"));
+    && (!/^\.brain\/(handoff|archive)\//.test(f) || moved.has(f.replace(/^\.brain\//, ".memoir/"))));
   if (!dirty.length) return;
   const secrets = secretFiles(dirty);
   if (secrets.length) die("secret files among the setup files: " + secrets.join(", "));
