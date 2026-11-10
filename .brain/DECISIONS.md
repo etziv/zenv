@@ -74,6 +74,14 @@ Decision: `etziv/zenv` is public (full history; scanned for secrets first: none)
 Source: the boss, 2026-11-09 ("repo buat publik aja dulu"), after D-016. No license file yet (all rights reserved by default).
 Installers are GitHub Releases (`v1.0.0` = Zenv-1.0.0-setup.exe, 2026-11-09, the boss: "izinkan").
 
+## D-020 Own private network (Noirlynx): a separate app; Zenv integrates it later like Tailscale [active] 2026-11-09
+Decision: the boss's own Tailscale-like network (control server + public console on his Linux server, WireGuard clients) is its own app,
+designed without Zenv (`docs/jaringan-privat.md`). Its client only joins the device to the network (no "open app" menu); opening a local
+app stays in Zenv, which calls the client's CLI/JSON interface as it calls `tailscale serve` today. Source: the boss, 2026-11-09
+("di rancangan tidak usah kamu masukan zenv", "membuka app local tetap lewat zenv, client hanya menghubunkan device dengan jaringan").
+Name: Noirlynx, CLI `noirlynx` (the boss, 2026-11-10: "kasih nama sistem jaringan privat noirlynx").
+Stack (the boss, same day): all Rust; console = Rust backend + React; desktop client native without a webview ("base codenya pakai rust").
+
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
