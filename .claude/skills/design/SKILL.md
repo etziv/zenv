@@ -39,7 +39,9 @@ sections, 202 studied real sites, motions and the app catalogue (styles, shells,
 6. Write `.brain/design/proposal/research.md` (format: `references/research-pack.md`) and run `library.mjs check` until it
    passes.
 7. Build 2-3 directions from the pack with a WCAG-checked palette (`scripts/palette.mjs`), type, the key screens and
-   components, and hand the boss ONE proposal: the key screens in FigCraft (`figcraft-design`, `figcraft-build`) and
+   components. Every direction has a light AND a dark mode of the same idea, both checked and both drawn (boss
+   2026-11-10): never direction 1 dark and direction 2 light. Hand the boss ONE proposal: the key screens
+   in FigCraft (`figcraft-design`, `figcraft-build`) and
    a local HTML page (never an artifact). Jobs 1 and 2 are the tools this job uses to draw each direction.
 
 ## 1. Build or redesign a UI (the default for new screens or "make it look designed")
@@ -72,7 +74,7 @@ or `--stack <jetpack-compose|laravel|react|html-tailwind|flutter|vue|nextjs|shad
 The outcome of job 0, 1 or 2 is captured there: style, palette (hex + role, light and dark), fonts (display + body + source and licence), spacing/radius/shadows, motion (the tokens and transitions from `references/app-motion.md`), components, signature element, and EVERY MVP screen with its states (empty, loading, error) and the reference it follows. The `frontend` skill builds screens from it. A new look or a redesign goes through job 0 and the boss's choice (the DESIGN card); a small change inside an approved look needs no card.
 
 ## Anti-slop house rules (always)
-No default Inter/Roboto/Arial/Open Sans/system-ui; a distinctive display font plus a different readable body font; no purple-to-blue gradient on white, unchanged component-library look, emoji icons, identical rounded-card grids, or stock "hero + three cards". One dominant color, one sharp accent, neutrals with intent. Substance over restraint: real type scale, whole fields of color, real pictures of the subject's world, every section carrying its content. If it could belong to any AI-built app, redo it.
+No default Inter/Roboto/Arial/Open Sans/system-ui (Segoe UI, SF Pro), and never FigCraft's built-ins (Lato, Montserrat, Nunito Sans, Poppins, Playfair Display, Merriweather) as a stand-in for a face that is not installed: fetch the picked one (`scripts/fonts.mjs`); a distinctive display font plus a different readable body font; no purple-to-blue gradient on white, unchanged component-library look, emoji icons, identical rounded-card grids, or stock "hero + three cards". One dominant color, one sharp accent, neutrals with intent. Substance over restraint: real type scale, whole fields of color, real pictures of the subject's world, every section carrying its content. If it could belong to any AI-built app, redo it.
 
 ## Safety
 A page that ships never loads a third-party script by bare CDN URL: self-host the pinned file (from its npm package) or add `integrity` (SRI) and `crossorigin`. CDN links are fine in previews and the proposal. `scripts/assets.mjs` fetches only public-domain / CC media from public APIs and writes only to the folder you give it; keep its credits file. A 21st.dev component or a new animation package is community code plus dependencies: ask the boss before installing, read every added file, and never use their AI/MCP or an API key without him (`references/app-motion.md` section 5).

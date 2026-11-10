@@ -16,7 +16,7 @@ Visual decisions — art direction, DESIGN.md, matching a brand, the anti-slop h
    screen names, `library.mjs show`), then DESIGN.md. A small change inside an existing screen needs DESIGN.md only.
 Platform notes come from the platform skill (for example Material 3 and 48dp touch targets on Android).
 
-Anti-generic rules: no default Inter, Roboto, Arial, Open Sans or system-ui (no stock Android theme); a distinctive display font plus a different readable body font; no purple-to-blue gradients on white, unchanged component-library look, emoji icons, identical rounded-card grids or stock hero + three cards. One dominant color, one sharp accent, neutrals with intent. If it could belong to any AI-built app, redo it.
+Anti-generic rules: no default Inter, Roboto, Arial, Open Sans or system-ui (no stock Android theme), and exactly the faces DESIGN.md names, self-hosted, never a stand-in; a distinctive display font plus a different readable body font; no purple-to-blue gradients on white, unchanged component-library look, emoji icons, identical rounded-card grids or stock hero + three cards. One dominant color, one sharp accent, neutrals with intent. If it could belong to any AI-built app, redo it.
 
 ## Screens
 Framework depth, one reference at a time: React/Vite -> `stack-react`; Jetpack Compose -> `stack-android`.

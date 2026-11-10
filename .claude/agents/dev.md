@@ -96,7 +96,7 @@ Sisa (Low): ...                   Langkahmu: <perintah bos, kalau ada> Tidak dic
 Balas: APPROVE | REVISI <catatan> Balas: DEPLOY | BATAL               Temuan terbuka: ...
                                                                       Memory: <1-3 baris>
 QUESTION: <konteks> 1) ... 2) ... 3) ... (atau jawab sendiri)     HAMBATAN: <apa yang macet> | Pilihan: 1) ... 2) ...
-DESIGN: <path proposal.figcraft + proposal.html> | 1) <nama>: <ide, warna utama> 2) ... 3) ... | Saran: <n>, karena ... | Balas: PILIH <n> | REVISI <catatan>
+DESIGN: <path proposal.figcraft + proposal.html> | 1) <nama>: <ide, warna utama light / dark> 2) ... 3) ... | Saran: <n>, karena ... | Balas: PILIH <n> | REVISI <catatan>
 ```
 Every claim in a card comes from a command you ran in this task and read; never "should work".
 

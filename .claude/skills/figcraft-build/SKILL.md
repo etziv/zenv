@@ -70,19 +70,21 @@ component <-> instance links (`components` map + `componentId`), page background
 
 ## 2b. Research, then plan, then build live in one run (`scripts/figlive.mjs`, the default for product screens)
 The order is fixed (boss 2026-11-03): 1) the research pack passes `library.mjs check`; 2) the plan file builds every
-screen the pack lists, each in its default, empty, loading and error state; 3) `figlive.mjs` executes the whole plan
+screen the pack lists, each in its default, empty, loading and error state, and its default state in light AND dark
+(boss 2026-11-10); 3) `figlive.mjs` executes the whole plan
 in ONE run (no model round-trip per step), live so the boss watches. figlive enforces 1 and 2: it refuses to build
 otherwise and prints what is missing.
 - `node scripts/figlive.mjs .brain/design/proposal/build-plan.json --check`: the gate only; fix until it prints `plan ok`.
-- `node scripts/figlive.mjs <plan> --live`: hosts a live session on this machine, opens a FigCraft window on the
-  boss's screen and joins it by itself (no click; `--no-viewer` prints the link only). The agent's cursor glides to
+- `node scripts/figlive.mjs <plan> --live`: hosts a live session on this machine and joins it in the boss's viewer
+  window by itself (no click; `--no-viewer` prints the link only): the window on port 7800 (`FIGCRAFT_VIEWER_PORT`) is
+  reused by every run, opened only when none answers there, so never open one yourself. The agent's cursor glides to
   every part it builds, a chat label beside it says what it is doing, and the view follows (spotlight). 20 frames
   took 5 s at `--pace 0.5`, 61 steps 28 s at `--pace 1`. `--hold 60` keeps the session open after.
 - Without `--live`: fast (61 steps in under 0.1 s), for rebuilds nobody watches; the result the boss reviews is
   still opened in his window afterwards (`open_file`).
 - Plan: `{"research": ".brain/design/proposal/research.md", "app": true (pack checked with --app), "save":
-  ".brain/design/proposal/proposal.figcraft", "open": "<optional .figcraft or figrest .json>", "steps": [...]}`; a step
-  is `{"label", "screen": "<### name in the pack>", "state": "empty|loading|error" (none = default), ...}` plus one of
+  ".brain/design/proposal/proposal.figcraft", "open": "<optional .figcraft or figrest .json>", "fonts": [<files from design/scripts/fonts.mjs, section 5>], "defaultFonts": "<only when a built-in face is right: why>", "steps": [...]}`; a step
+  is `{"label", "screen": "<### name in the pack>", "state": "empty|loading|error" (none = default), "mode": "light|dark" (none = light), ...}` plus one of
   `"batch": [{command, params, as}]` (any command, `$ref` chaining), `"draw": {"tool": "rectangle", "from": [x,y],
   "to": [x,y]}, "name", "props"` (a real mouse drag), `"text": {"text", "x", "y", "parent", "name"}` or
   `"call": {"tool", "args"}`; `"cursor": [x,y]` overrides where the cursor goes. A drawing that is not a product screen
@@ -116,14 +118,23 @@ Refresh the catalogue for a new FigCraft version: `figcraft-cli commands > refer
 vectors, text in a fallback font. `screenshot {window:true}` shows what the boss sees. `file.fontReport` must list
 0 missing families. Fix in the generator, never by hand on 7,000 layers.
 
-## 5. Fonts (check, never assume)
-`figcraft-cli run` a one-step script `[{"command":"text.fonts","params":{}}]` lists every family FigCraft can draw
-(system + built-in). On the 2026-11-03 Windows machine: Bahnschrift, Sitka, Georgia, Gill Sans MT, Lato, Nunito Sans,
-Segoe UI Variable, Lucida Sans / Sans Typewriter, Cascadia Mono / Code, Consolas, Liberation Sans/Serif/Mono (plus
-Inter / Roboto / Open Sans, which the design house rules ban). NOT available although their licence files ship:
-Source Sans 3, Source Serif 4; not installed: Public Sans, JetBrains Mono, IBM Plex, Atkinson. `font.download`
-fetches Google Fonts only when the user has turned downloading on (Text > Missing fonts); that is an install: ask
-the boss first. `text.loadFont {path}` adds a local font file for the session.
+## 5. Fonts (the pack's type is drawn as picked, never substituted)
+FigCraft draws only its built-ins (Inter, Roboto, Open Sans, Lato, Montserrat, Nunito Sans, Poppins, Playfair
+Display, Merriweather, Liberation) and the system's faces; any other family falls back silently. That is why designs
+kept landing in the same AI faces (noirlynx 2026-11: the pack picked Hanken Grotesk / Albert Sans / Libre Franklin,
+the frames were drawn in Nunito Sans / Montserrat / Lato; boss 2026-11-10). So:
+- Fetch the picked faces: `node .claude/skills/design/scripts/fonts.mjs "Hanken Grotesk:400,600,700" "<Family>:<w>"
+  --out .brain/design/proposal/fonts` (Google Fonts TTF files in the project, not an install) and list the printed
+  paths in the plan's `"fonts"`. figlive loads them (`text.loadFont`) into its engine AND the boss's window.
+- A loaded font lives only in that app session; the .figcraft does not keep it. Opening the proposal again (figcraft
+  `open_file`) needs `text.loadFont {path}` per file in that window first.
+- A product screen draws only the faces it loaded: figlive `--check` refuses a plan naming a built-in or system face,
+  and after the build exits 1 with `FONT NOT PICKED: <family>` for any face not loaded from `"fonts"` (a text without
+  fontFamily is Inter; styles, variables and an opened file count too) and `FONT FALLBACK: <family>` for one it could
+  not draw. `"defaultFonts": "<why>"` (a desktop exe that must ship 0 KB of fonts) lifts both but the fallback.
+  `fonts.mjs` fails on a weight Google lacks; a bold drawn from a 400-only file is not detected: fetch every weight used.
+- What this machine has: `figcraft-cli run` a one-step script `[{"command":"text.fonts","params":{}}]`. `font.download`
+  needs downloading turned on in the app (Text > Missing fonts): a setting of the boss's, ask first.
 
 ## 6. Gotchas (each cost real time)
 - Instance text overrides must keep a fixed-width label's width, or it wraps ("Leba r"): `fixedw()` on the label,

@@ -141,14 +141,15 @@ Write a compact plan (in chat, a few lines each):
   black, a palette sampled from a non-digital photo. A constraint that changes nothing is replaced.
 - **Colour**: one dominant hue and one sharp accent, neutrals tinted toward the dominant (not five
   timid tints): 4–6 named hex values (background, surface, text, muted text, accent, one status
-  colour if needed), plus a Dark counterpart re-picked per token, not inverted, when theming is in
-  scope. OKLCH makes even lightness steps easy; FigCraft takes hex (helper in the reference).
+  colour if needed), plus a Dark counterpart re-picked per token, not inverted, always (every
+  direction has both modes, boss 2026-11-10). OKLCH makes even lightness steps easy; FigCraft takes hex (helper in the reference).
 - **Type**: a display and a text face that contrast in structure, chosen for this subject; a
   modular scale (e.g. 12/14/16/20/24/32/48), weights, line heights (≈1.4–1.6 body, ≈1.1–1.25
   display), tighter tracking at large sizes. Inter, Roboto, Arial, Helvetica, system-ui and Space
   Grotesk only if the brand uses them or the plan says why (sources and exceptions in the
-  reference §4). Check
-  `text.fonts {family}` / `text.missingFonts`; installing a font changes the system: ask first.
+  reference §4). FigCraft's built-ins (Lato, Montserrat, Nunito Sans, Poppins, Playfair Display,
+  Merriweather) are never a stand-in for the picked face: fetch it with the design skill's
+  `scripts/fonts.mjs` and load it (`figcraft-build` section 5); installing into the system: ask first.
 - **Spacing & shape**: 4- or 8-pt scale; radius scale tied to hierarchy (not one radius
   everywhere); elevation used sparingly; density at an extreme (generous or truly dense), not the
   comfortable middle.
@@ -444,6 +445,6 @@ file's components and variables.
 - A whole `batch` rolls back on one bad step: read the error (it names the step), fix, rerun.
 - `inspect_document` on big files truncates (`truncated` key): use `get_node` on subtrees.
 - `screenshot` defaults to 1600 px max side; pass `ids` to focus and `scale` for detail.
-- Fonts: missing families fall back silently; check `text.missingFonts` and pick installed ones.
+- Fonts: missing families fall back silently; load the picked face (`text.loadFont`, `figcraft-build` section 5), never swap in an installed one.
 - Exports/saves outside allowed roots fail; `export` without `path` returns data inline.
 - Don't `save_file` unless the user wants the file saved or section 9 requires it; save where they say.

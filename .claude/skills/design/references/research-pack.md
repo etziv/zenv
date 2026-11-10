@@ -30,7 +30,7 @@ re-spawned for FigCraft, a worker, the `frontend` build). `node .claude/skills/d
 - lib:sites/<id> take: ...
 ## Library
 - direction lib:directions/<id>: <why>
-- palette lib:palettes/<id>, type lib:type/<id>
+- palette lib:palettes/<id> (light + dark: the mode the entry lacks is derived from it, colour.md section 6), type lib:type/<id>
 - app style lib:app-styles/<id>, shell lib:app-shells/<id>, patterns lib:app-patterns/<id>, lib:app-patterns/<id>
 ## Brands
 - brands/<name>.md: borrow <..>; not <..>
