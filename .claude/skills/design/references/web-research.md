@@ -67,7 +67,8 @@ For each:
 - **Type:** display and body families (not the banned defaults), the scale (5 sizes at most), with the licence.
   Fetch them (`node .claude/skills/design/scripts/fonts.mjs "<Family>:<weights>" ...`) and draw in them: a face is
   never swapped for one FigCraft happens to have (`figcraft-build` section 5).
-- **Layout and key screens:** the 3-5 screens from step 1, drawn in HTML/CSS at real size (390x844 for a phone,
+- **Layout and key screens:** only the elements the pack lists for the screen (`elements:`, each with its job and
+  source); nothing added while drawing. The 3-5 screens from step 1, drawn in HTML/CSS at real size (390x844 for a phone,
   1440 wide for desktop web), with real content from the brief, never lorem ipsum, and their empty / loading /
   error state where it changes the design; each screen's default state also in the dark mode.
 - **Components:** button, input, list item or card, navigation, one signature element.

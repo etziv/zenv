@@ -20,7 +20,7 @@ Anti-generic rules: no default Inter, Roboto, Arial, Open Sans or system-ui (no 
 
 ## Screens
 Framework depth, one reference at a time: React/Vite -> `stack-react`; Jetpack Compose -> `stack-android`.
-Build from DESIGN.md against `.brain/contracts/` (screens come after all backend modules, so the contracts are real). A contract that is wrong or missing something: fix the backend side first, never guess around it.
+Build from DESIGN.md against `.brain/contracts/` (screens come after all backend modules, so the contracts are real). A contract that is wrong or missing something: fix the backend side first, never guess around it. Every element you build does what DESIGN.md says its job is, with real data from its source. A design element with no backing contract is reported to the dev (a DESIGN.md or contract gap). It is never shipped as a dead button, a hard-coded number or an empty panel. No helper text, subtitle or tooltip that repeats its label (design SKILL.md "No text that repeats or narrates").
 Transitions (enter / exit, dialogs, lists, toasts, navigation) follow DESIGN.md's Motion tokens and `design/references/app-motion.md`: the platform's own tools first (Compose animation APIs, Livewire `wire:transition` / Alpine, React `motion`), reduced motion respected, only `transform`/`opacity` on the web. A component from 21st.dev or a new animation package is an install: ask the boss first.
 
 ## Plan first, then prove every screen yourself

@@ -200,6 +200,10 @@ brand/system fixes the look.
 
 Distinctive, intentional, accessible. Generic AI-looking design is the main failure mode.
 
+**Function before form.** Draw only the elements the research pack lists for the screen, each with a job and a
+source (design SKILL.md). A frame that needs a new element goes back to the pack first. Never add a chart, stat,
+tab or button "to fill" a layout, and no description or subtitle that repeats its label (design SKILL.md).
+
 **Typography carries personality.** Pick faces deliberately for this subject; build a real scale;
 make headlines an active design element. Keep line length under ~80 characters (set `maxWidth`
 or a fixed text width). Serif body text gets a bit more line height.
