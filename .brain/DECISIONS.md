@@ -102,6 +102,7 @@ G-006 2026-11-06 Do not run Vitest while a cargo build runs (also right after a 
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
 G-011 2026-11-09 Do not debug a one-off rustc "crate `X` required in rlib format" or "can't find crate for `std`" as code: rerun (passed each time; cause unproven, likely antivirus file locks).
 G-012 2026-11-16 Do not debug Codex "router unreachable" as a network bug first: OmniRoute and 9router both default to port 20128, so Codex set to the other router gets `401 Invalid API key` (proven with curl on `/v1/responses`); check which router owns 20128 and `model_provider` in `~/.codex/config.toml`.
-G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use".
+G-013 2026-11-18 Do not leave `task.mjs init-repo` [setup] commits on local `main` before a merge-mode ship: the PR squashes them, the ship's `pull --ff-only` then fails silently and local `main` misses the task (task 12; fixed with `git merge origin/main`, boss "sync").
+G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use" (STATUS open issue 2026-11-09: mysqld 9.7 on 3306).
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).

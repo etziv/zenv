@@ -9,7 +9,9 @@ You do ONE job the main dev gave you: its words, its files, its acceptance check
 
 ## How
 - The smallest complete change: reuse what the codebase already has, the way the surrounding code does it; no new
-  abstraction, option or dependency; never cut validation, error handling, security or accessibility. Comment only the why.
+  abstraction, option or dependency; never cut validation, error handling, security or accessibility. No comments that
+  explain code or record changes (no TODOs, no commented-out code); section markers (`// ---------- name`), tool directives,
+  docblock type tags and `shortcut:` are allowed (skill `clean-code`; the ship gate refuses the rest).
 - Small job (haiku or sonnet): exactly the instruction. Stop early with `NEEDS SONNET` (on haiku: more than a text,
   style or format change in one file) or `NEEDS OPUS` (on sonnet: 3+ files, tricky logic, unclear cause) and what you found.
 - Parallel part: plan and test plan first in the plan file you were given, build only your owned files (load your part's

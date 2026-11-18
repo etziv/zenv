@@ -58,7 +58,7 @@ When invoked:
 
 ### MEDIUM — Best Practices
 - PSR-12: import order, spacing, brace placement, naming conventions
-- Missing docblocks on complex public methods
+- A complex public method whose name and types do not say what it does (rename or split it; a docblock holds type tags only)
 - `dd()`/`dump()`/`var_dump()` left in committed code
 - Unused or overly broad `use` imports — import only what you need, keep them clean
 - `count($collection)` vs `$collection->isEmpty()` — prefer `isEmpty()` for intent-revealing checks; use `count()` only when a numeric count is actually needed

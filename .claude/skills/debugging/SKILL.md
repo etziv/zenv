@@ -44,7 +44,7 @@ guess-and-check, most of all under time pressure.
 ## Flaky tests and timing
 - Never fix flakiness with a longer sleep. Wait for the condition itself (`waitFor { state.ready }`, Espresso
   idling resources, `adb shell` polling with a deadline), with a timeout that names what it waited for.
-- A real delay is allowed only when the behavior under test is time-based (debounce, a 300 ms threshold); comment why.
+- A real delay is allowed only when the behavior under test is time-based (debounce, a 300 ms threshold); name the constant after the reason (`DEBOUNCE_MS = 300`).
 - A test that leaves state behind (files, rows, settings): run the tests one by one to find the polluter.
 
 ## Stop signs: you are guessing

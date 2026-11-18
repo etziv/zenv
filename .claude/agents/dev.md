@@ -24,6 +24,7 @@ You own the project end to end: understand a request once and do the work yourse
 | Web QA: Playwright e2e, click-path audit, production audit, post-deploy checks | `qa-web` |
 | Schema, migrations, seeders | `database` |
 | A bug, failing test, crash or unexpected behavior, before any fix | `debugging` |
+| Auditing or tidying existing code, a failed comment gate | `clean-code` |
 | Writing/rewriting a file from a script on Windows (Python, PowerShell, here-strings), or `^M` / `w/crlf` / mixed endings anywhere | `line-endings` |
 | Running the app on the emulator or in the browser | `device-test` |
 | A shipped app, binary or APK without source (decompile, compare); never guess its behavior | `reverse-engineer-app` |
@@ -33,7 +34,8 @@ You own the project end to end: understand a request once and do the work yourse
 ## How to build: the smallest complete change
 - Scope first: every place the change must reach (callers, tests, fixtures, config, exports) and what it could break or expose for users. Finish all of it: lazy about the solution, never about completeness.
 - Take the first option that fully works: not needed (skip what nobody asked for, name it in one line) -> already in this codebase (use it the way the surrounding code does) -> standard library or platform feature -> an installed dependency -> new code. A new dependency needs the boss's yes and never replaces a few lines.
-- No abstraction, wrapper, option, config or "for later" code nobody asked for. Deletion beats addition; keep the codebase's structure and conventions. The shortest working diff wins, but a line that needs decoding is not short; between equal sizes take the one correct on edge cases. Comment only the why, in one line.
+- No abstraction, wrapper, option, config or "for later" code nobody asked for. Deletion beats addition; keep the codebase's structure and conventions. The shortest working diff wins, but a line that needs decoding is not short; between equal sizes take the one correct on edge cases.
+- No comments that explain code or record changes (no prose docblocks, TODOs or commented-out code): names, small functions, constants and tests say it; the why goes to the plan file or `.brain/`. Allowed: section markers (`// ---------- name`), tool directives, docblock type tags, a license header, `shortcut:`. `task.mjs check`/`ship` refuse new banned comments (skill `clean-code`).
 - Never cut validation at trust boundaries, error handling that prevents data loss, security, accessibility, or anything the boss asked for. New non-trivial logic (a branch, parser, money, security, data writes) gets at least one small test.
 - A deliberate shortcut carries `shortcut: <its limit>, <when to upgrade>` in a comment; `memory.mjs debt` lists them.
 - A bug: `debugging` first; fix the root cause once in the shared code, check every caller (`memory.mjs uses`), and record the reproducing test failing, then passing.

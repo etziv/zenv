@@ -240,6 +240,19 @@ function planCheck(id, files) {
     + "-dev.md. Plan it, test it and record the results first (dev.md, Every task step 4), then ship again. Nothing was committed.");
 }
 
+function commentGate(st, files0, repos) {
+  const s = path.join(root, ".claude", "skills", "clean-code", "scripts", "comments.mjs");
+  if (rawConfig().comments === "allowed" || !fs.existsSync(s)) return;
+  const runs = [{ cwd: root, base: st.startCommit, files: files0, label: "" }, ...repos.map((r) => ({ cwd: r.dir, base: r.rs.head, files: r.files, label: r.name + "/" }))];
+  for (const x of runs) {
+    const code = x.files.filter((f) => !NON_CODE.test(f));
+    if (!code.length) continue;
+    const r = spawnSync(process.execPath, [s, "gate", "--base", x.base], { cwd: x.cwd, input: code.join("\n"), encoding: "utf8" });
+    if (r.status === 1) die("comment gate" + (x.label ? " in " + x.label : "") + ". Nothing was committed.\n" + (r.stdout || "").trim());
+    if (r.status !== 0) console.log("comment gate skipped" + (x.label ? " in " + x.label : "") + ": " + ((r.stderr || "").trim().split("\n")[0] || "exit " + r.status));
+  }
+}
+
 // Memory upkeep through the memory skill (no LLM, 0 tokens): `maintain` rebuilds .brain/infra.md, archives cold
 // superseded decisions and reports hygiene issues; `infra` only the index. Never blocks a ship.
 function memoryTool(cmd) {
@@ -378,10 +391,12 @@ function status() {
 }
 function check() {
   const cfg = config();
-  if (!cfg.verify.length && !cfg.repos.some((r) => r.verify.length)) { console.log("no verification commands in .brain/project.json"); return; }
   const id = taskOf(git(["symbolic-ref", "--short", "HEAD"]).out), st = id && readJson(path.join(stateDir(), id + ".json")); // symbolic-ref: also on an unborn branch
+  const files0 = st ? changedFiles(st.startCommit) : [], repos = st && st.repos ? taskRepos(cfg, st) : [];
+  if (st) commentGate(st, files0, repos);
+  if (!cfg.verify.length && !cfg.repos.some((r) => r.verify.length)) { console.log("no verification commands in .brain/project.json"); return; }
   if (st) { // on a task: what ship will verify, so qa's check and the ship share one run
-    const v = verifyTask(cfg, changedFiles(st.startCommit), st.repos ? taskRepos(cfg, st) : []);
+    const v = verifyTask(cfg, files0, repos);
     if (!v.ok) die("verification failed" + (v.repo ? " in " + v.repo : "") + ":\n" + v.tail);
     return;
   }
@@ -454,6 +469,7 @@ function ship(id, evidence) {
   const secrets = [...secretFiles(files0), ...repos.flatMap((r) => secretFiles(r.files).map((f) => r.path + "/" + f))];
   if (secrets.length) die("secret files would be committed; add them to .gitignore. Nothing was sent:\n  " + secrets.join("\n  "));
   planCheck(id, [...files0, ...repos.flatMap((r) => r.files.map((f) => r.path + "/" + f))]);
+  commentGate(st, files0, repos);
   const v = verifyTask(cfg, files0, repos);
   if (!v.ok) die("verification failed" + (v.repo ? " in " + v.repo : "") + ". Nothing was committed or sent. Fix it and ship again.\n" + v.tail);
 

@@ -516,4 +516,7 @@ open collections could not be searched.
 | `assets/base.css` · `assets/base.js` | An optional neutral foundation to build on. |
 | `assets/scenes/` | The scroll scenes: the shared stage (`stage.js`, `stage.css`) and, for each scene in the library, its `.js`, `.css` and a working demo page in `demo/`. |
 | `assets/app.css` · `assets/charts.js` | For app screens: a neutral shell, panels, tables and controls, and small SVG charts drawn to the app rules. |
+
+Every asset you copy into the project keeps its comments only here: read them at the source, then delete the
+comments from the project's copy (section markers may stay). The comment gate (`clean-code`) refuses them in new files.
 | `library/` | The data the draw reads: directions, heroes, sections, type systems, palettes, photographs, studied sites, motions, scroll scenes (`scenes.json`), and the app styles, shells and screen patterns (`app.json`). Do not read it whole; use the script. |
