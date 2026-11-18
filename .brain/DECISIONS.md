@@ -84,6 +84,14 @@ app stays in Zenv, which calls the client's CLI/JSON interface as it calls `tail
 Name: Noirlynx, CLI `noirlynx` (the boss, 2026-11-10: "kasih nama sistem jaringan privat noirlynx").
 Stack (the boss, same day): all Rust; console = Rust backend + React; desktop client native without a webview ("base codenya pakai rust").
 
+## D-021 Pure Rust UI with egui/eframe instead of Tauri + WebView (chosen, not started) [active] 2026-11-18
+Decision: Zenv's UI moves to egui/eframe 0.37 + wgpu (the stack of FigCraft and ArtCraft Launcher), calling `zenv-core` directly; the
+Tauri shell and React UI go once every module runs natively. Plan, sub-choices and risk gates: [M20](MODULES.md#m20-native-ui-egui-without-webview).
+Why: Zenv + its WebView2 used ~480 MB private (measured 2026-11-18); egui has the widest ecosystem (syntect, commonmark, kittest), free licence.
+Rejected: Slint 1.19 (GPL-3.0 or attribution licence, weaker terminal/editor widgets), iced 0.14 (slow releases, thinnest ecosystem).
+Source: the boss, 2026-11-18 ("buat versi pure rustnya", then on the PROPOSAL card "A jangan kerjakan dulu, buat task dulu aja"), task 12.
+Ask: versi pure rust, tanpa webview, ganti tauri ke egui, seperti figcraft
+
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
