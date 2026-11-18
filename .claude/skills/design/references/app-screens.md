@@ -838,11 +838,11 @@ enough for the defaults.
 
 ### 8.2 Settings layout
 
-- Each section is a row: a label column (about 450px: a 16/500 title and a 14px grey description)
+- Each section is a row: a label column (about 450px: a 16/500 title and, only when it says what the title cannot, such as the consequence or the limit, a 14px grey line; design SKILL.md "No text that repeats or narrates")
   beside a panel (about 700px, #fafafa, radius 16, padding 16, no border, no shadow). The title's cap
   top aligns with the panel's first line, 6-8px below the panel's top.
 - Sections are split by a full-width 1px rule with 32px above and below.
-- A switch row: a 14/500 title, a status badge 8px after it, a 14px grey description, and the toggle
+- A switch row: a 14/500 title, a status badge 8px after it, a 14px grey line only when it adds what the title cannot, and the toggle
   on the right, 16px from the edge and centred on the title line.
 - A plan-gated feature: a 48px tinted strip with a 32px button directly above the locked panel; the
   panel stays readable.

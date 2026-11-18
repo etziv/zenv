@@ -28,6 +28,8 @@ for wablast.test and retribusi-h2h.test. Source: the boss 2026-10-19, hardening 
 
 ## D-007 OmniRoute stays next to 9router [active] 2026-10-23
 Decision: both AI routers remain installable Tools services (`ai_router.rs`), though the boss prefers 9router. Source: the boss, 2026-10-23.
+Codex uses 9router: `~/.codex/config.toml` default `model_provider = "ninerouter"`, model `my-combo`, key from env `NINEROUTER_API_KEY`; OmniRoute kept as `--profile omniroute`. Source: the boss, 2026-11-16 ("ganti ke 9router").
+Ask: api 9router tidak bisa dijangkau dari codex, codex tidak bisa konek router
 
 ## D-008 Windows first; macOS later [active] 2026-10-16
 Decision: build and test for Windows only; a macOS port (not iOS) starts only when the boss asks. Source: the boss.
@@ -82,6 +84,14 @@ app stays in Zenv, which calls the client's CLI/JSON interface as it calls `tail
 Name: Noirlynx, CLI `noirlynx` (the boss, 2026-11-10: "kasih nama sistem jaringan privat noirlynx").
 Stack (the boss, same day): all Rust; console = Rust backend + React; desktop client native without a webview ("base codenya pakai rust").
 
+## D-021 Pure Rust UI with egui/eframe instead of Tauri + WebView (chosen, not started) [active] 2026-11-18
+Decision: Zenv's UI moves to egui/eframe 0.37 + wgpu (the stack of FigCraft and ArtCraft Launcher), calling `zenv-core` directly; the
+Tauri shell and React UI go once every module runs natively. Plan, sub-choices and risk gates: [M20](MODULES.md#m20-native-ui-egui-without-webview).
+Why: Zenv + its WebView2 used ~480 MB private (measured 2026-11-18); egui has the widest ecosystem (syntect, commonmark, kittest), free licence.
+Rejected: Slint 1.19 (GPL-3.0 or attribution licence, weaker terminal/editor widgets), iced 0.14 (slow releases, thinnest ecosystem).
+Source: the boss, 2026-11-18 ("buat versi pure rustnya", then on the PROPOSAL card "A jangan kerjakan dulu, buat task dulu aja"), task 12.
+Ask: versi pure rust, tanpa webview, ganti tauri ke egui, seperti figcraft
+
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
@@ -91,6 +101,7 @@ G-005 2026-11-09 Do not filter Claude transcript entries by type before walking 
 G-006 2026-11-06 Do not run Vitest while a cargo build runs (also right after a Cargo.toml edit, likely rust-analyzer's rebuild): workers time out ("Timeout waiting for worker"); rerun once it settles.
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
 G-011 2026-11-09 Do not debug a one-off rustc "crate `X` required in rlib format" or "can't find crate for `std`" as code: rerun (passed each time; cause unproven, likely antivirus file locks).
+G-012 2026-11-16 Do not debug Codex "router unreachable" as a network bug first: OmniRoute and 9router both default to port 20128, so Codex set to the other router gets `401 Invalid API key` (proven with curl on `/v1/responses`); check which router owns 20128 and `model_provider` in `~/.codex/config.toml`.
 G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use".
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).

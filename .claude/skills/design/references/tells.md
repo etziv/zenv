@@ -88,6 +88,7 @@ against 57% of weak ones.
 | Headline as a full sentence at display size, three or four lines | banned (over two lines) | A title of about five words; the rest goes below |
 | Stock section order: hero, logos, features, testimonial, pricing, CTA | no rule; see copy.md §1 | The order of the argument |
 | Every section the same layout family | critique.md pass 9 | Different composition per section, from the sheet |
+| Filler element: a chart, stat, avatar, notification bell, activity feed or tab with no data or screen behind it | banned (`library.mjs check`: every element needs a job and a source) | Only the elements the brief and the contracts back; leave the space |
 | Everything centred | warned over 72% | Left-anchored, one centred moment |
 | One medium border radius (12–16px) on everything | none | Square or fully round, chosen once |
 | Nine nearly equal font sizes | warned over 9 | Five sizes, far apart |
@@ -95,6 +96,10 @@ against 57% of weak ones.
 | Text or a CSS box where a picture belongs | critique.md cap | A real picture, or a design that needs none |
 
 ## 6. Copy tells
+
+Banned (boss 2026-11-10): a description, subtitle, helper line or tooltip that repeats its label or says what the
+element obviously is ("Manage your settings" under Settings, "Click to save" on Save). Keep a line only for a
+consequence, a limit, the current state or an error (design SKILL.md "No text that repeats or narrates").
 
 Flagged by `lint.mjs`: the genre's verbs and adjectives (unlock, supercharge, seamless, elevate,
 effortless, cutting-edge, all-in-one …); the correction ("not just X, it's Y"); tricolon headlines;

@@ -162,6 +162,9 @@ the client confirms or replaces it.
   words separated by middle dots or slashes.
 - The em dash as a habit. One or two on a page read as writing; ten read as a model. Use a full stop.
 - Explainer captions that narrate the design: "A clean, minimal layout for…".
+- Descriptions that repeat the label: a line under a title, button, card, menu item or field that says again what
+  the label says ("Manage your account" under Account, "Click here to continue" on Continue). Cut it, or say the
+  consequence, limit or state the label cannot (design SKILL.md "No text that repeats or narrates").
 - Step labels that duplicate numbers: "Step 1", "Phase 02".
 - Three parallel items everywhere: three features, three stats, three steps. Use the number the
   content has.

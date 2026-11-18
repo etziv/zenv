@@ -1,13 +1,40 @@
 {
   "agent": "dev",
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Bash",
       "PowerShell",
+      "Bash(node .claude/skills/memory/scripts/memory.mjs *)",
+      "Bash(node .claude/scripts/task.mjs start *)",
+      "Bash(node .claude/scripts/task.mjs check *)",
+      "Bash(node .claude/scripts/task.mjs status *)",
+      "Bash(node .claude/scripts/task.mjs usage *)",
+      "Bash(node .claude/scripts/task.mjs ship *)",
+      "PowerShell(node .claude/skills/memory/scripts/memory.mjs *)",
+      "PowerShell(node .claude/scripts/task.mjs start *)",
+      "PowerShell(node .claude/scripts/task.mjs check *)",
+      "PowerShell(node .claude/scripts/task.mjs status *)",
+      "PowerShell(node .claude/scripts/task.mjs usage *)",
+      "PowerShell(node .claude/scripts/task.mjs ship *)",
       "WebSearch",
       "WebFetch",
-      "mcp__figcraft"
+      "mcp__figcraft",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_drag",
+      "mcp__playwright__browser_emulate_media",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_hover",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_navigate_back",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_wait_for"
     ]
   },
   "hooks": {
@@ -59,6 +86,16 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/skills/memory/scripts/memory.mjs\" hint",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/skills/memory/scripts/memory.mjs\" near",
             "timeout": 15
           }
         ]

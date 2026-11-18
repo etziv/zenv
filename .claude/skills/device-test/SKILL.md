@@ -34,7 +34,10 @@ Browser: Chromium headless shell (`.claude/scripts/playwright-mcp.json`), about 
 version needs its own shell build. "Browser ... is not installed" means the shell is missing on this machine: ask the
 boss once, then run `npx -y playwright@1.65.0-alpha-2026-10-30 install chromium-headless-shell` (the Playwright that
 MCP pin uses; bump both together). He declines, or a page renders differently from Chrome: replace `--config ...` with
-`--browser chrome` in `.mcp.json`. A first visit to an external site sometimes waits 7-12 s (cause not found, G-004); localhost is always fast.
+`--browser chrome` in `.mcp.json`. A visible MCP window (the boss wants to watch, or a page needs one): replace
+`--headless` with `--browser chrome` (the system Chrome, already installed); dropping `--headless` alone makes the MCP
+ask for its own full Chromium, which is not installed: never install Chromium or Chrome for this (ebphtbv3 2026-11-12).
+A changed `.mcp.json` applies after `/mcp` -> playwright -> Reconnect. A first visit to an external site sometimes waits 7-12 s (cause not found, G-004); localhost is always fast.
 Small checks only (one flow, a screenshot, the console) go through the MCP. A full e2e run (every critical journey: the
 MVP review, before a release, after a big change) never uses a headless browser (boss 2026-11-09): run the project's
 Playwright Test suite on real Chrome with a visible window, a `chrome-full` project in `playwright.config`

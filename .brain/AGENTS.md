@@ -30,5 +30,7 @@ Record only what the code and the graph cannot tell; one fact, one place; relati
 - Git writes go ONLY through `node .claude/scripts/task.mjs` (start / ship / finish / abort / deploy). Never run git or gh
   write commands by hand.
 - The boss approves only: the brief, the architecture proposal, the design proposal, a new/destructive DB schema, the QA + security
-  reports, and a deploy. Ask in chat before installs, DB commands, or anything destructive outside the project.
+  reports, and a deploy. Ask in chat before a NEW dependency, a destructive
+  or shared/production database command, or anything destructive outside the project (installing what the manifest declares
+  and migrating the local dev database need no question).
 - Keep secret values out of git, memory, handoffs and chat.

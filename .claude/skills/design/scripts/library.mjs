@@ -56,6 +56,35 @@ function show(kind, id) {
   const t = JSON.stringify(x, null, 1); console.log(t.length > 8000 ? t.slice(0, 8000) + "\n(cut at 8000 chars)" : t);
 }
 // The research pack: proof that the look comes from a survey, the library and the rules, not from taste.
+// function before form (boss 2026-11-10): every element of a screen names its job and a real source in this project
+export function elements(block, file) {
+  // the list runs from `elements:` (any case, **bold** allowed) to the next top-level `key:` line or the screen's end;
+  // `-` or `*` bullets, blank lines skipped, an unbulleted line continues the element above (a wrapped line)
+  const lines = block.replace(/\r/g, "").split("\n"), at = lines.findIndex((l) => /^\s*\**elements?\**\s*:/i.test(l)), items = [];
+  if (at >= 0) for (const l of lines.slice(at + 1)) {
+    if (/^\s*[-*]\s+/.test(l)) items.push(l.replace(/^\s*[-*]\s+/, ""));
+    else if (/^\**[a-z][\w-]*\**\s*:/i.test(l) && !/^(job|source)\s*:/i.test(l)) break;
+    else if (l.trim() && items.length) items[items.length - 1] += " " + l.trim();
+  }
+  const brain = path.resolve(path.dirname(file), "../.."), strict = path.basename(brain) === ".brain";
+  let modules = null; if (strict) try { modules = fs.readFileSync(path.join(brain, "MODULES.md"), "utf8"); } catch { /* none yet */ }
+  return items.map((l) => {
+    const name = l.split(/:\s*(?:job|source):|\|/)[0].trim(), src = ((l.match(/source:\s*(.*)$/i) || [])[1] || "").trim();
+    let why = "";
+    if (!/job:\s*[^|]*\w/i.test(l)) why = "no job:";
+    else if (!src) why = "no source:";
+    else if (/^decoration\b/i.test(src)) { if (!/^decoration\s*\(\s*[^)\s]/i.test(src)) why = "decoration without (why)"; }
+    else if (!/\bBRIEF\b|\bM\d+[a-z]?\b|contracts\/[\w.-]/.test(src)) why = "source is not a BRIEF feature, an M<n> module or a contracts/ file";
+    else if (strict) {
+      const gone = [...src.matchAll(/contracts\/([\w.\/-]+)/g)].map((x) => x[1].replace(/[./]+$/, "")).filter((f) => !fs.existsSync(path.join(brain, "contracts", f)));
+      const ids = [...src.matchAll(/\b(M\d+[a-z]?)\b/g)].map((x) => x[1]);
+      const noMod = modules == null ? ids : ids.filter((id) => !new RegExp("\\b" + id + "\\b").test(modules));
+      if (gone.length) why = "contracts/" + gone.join(", contracts/") + " does not exist";
+      else if (noMod.length) why = noMod.join(", ") + (modules == null ? ": .brain/MODULES.md does not exist" : " not in MODULES.md");
+    }
+    return { name, src, why };
+  });
+}
 function check(file, app) {
   let t; try { t = fs.readFileSync(file, "utf8"); } catch { console.log("[check] FAIL: " + file + " does not exist. Write the research pack first (design SKILL.md, job 0)."); process.exit(1); }
   const sec = (name) => { const m = t.match(new RegExp("^##[ \\t]*" + name + "[^\\n]*\\n([\\s\\S]*?)(?=^##[ \\t]|(?![\\s\\S]))", "mi")); return m ? m[1] : null; };
@@ -97,6 +126,8 @@ function check(file, app) {
       const name = b.split("\n")[0].trim(), lib = (b.match(/lib:[a-z-]+\/[\w.-]+/g) || []).length;
       const q = /question:/i.test(b), sig = /signature:/i.test(b), comp = /components?:/i.test(b), st = /states?:[^\n]*empty[^\n]*loading[^\n]*error|states?:[^\n]*loading[^\n]*empty[^\n]*error/i.test(b);
       (q && sig && comp && st && lib ? ok : fail)("Screen " + name + ": " + [q ? "" : "no question:", sig ? "" : "no signature:", comp ? "" : "no components:", st ? "" : "no states: line naming empty, loading and error", lib ? lib + " lib refs" : "no lib: ref"].filter(Boolean).join(", "));
+      const els = elements(b, file), badEl = els.filter((e) => e.why);
+      (els.length && !badEl.length ? ok : fail)("Screen " + name + " elements: " + (els.length ? (els.length - badEl.length) + "/" + els.length + " with job and source" + (badEl.length ? "; " + badEl.map((e) => e.name + " (" + e.why + ")").join("; ") : "") : "no `elements:` list (each drawn element: job | source; research-pack.md step 6)"));
     }
   }
   const nFail = out.filter((l) => l.startsWith("FAIL")).length;
@@ -106,7 +137,9 @@ function check(file, app) {
 const [cmd, ...a] = process.argv.slice(2);
 const opt = (n, d) => { const i = a.indexOf(n); return i >= 0 ? a[i + 1] : d; };
 const pos = a.filter((x, i) => !x.startsWith("--") && !(i > 0 && a[i - 1].startsWith("--") && ["--kind", "--top"].includes(a[i - 1])));
-if (cmd === "search") search(pos.join(" "), opt("--kind", null), +opt("--top", 8));
+const main = path.resolve(process.argv[1] || "") === fileURLToPath(import.meta.url); // imported by a test: no CLI
+if (!main) { /* module use */ }
+else if (cmd === "search") search(pos.join(" "), opt("--kind", null), +opt("--top", 8));
 else if (cmd === "show") show(pos[0], pos[1]);
 else if (cmd === "kinds") for (const [k, v] of Object.entries(kinds())) console.log(k.padEnd(14) + v.length);
 else if (cmd === "check") check(pos[0], a.includes("--app"));
