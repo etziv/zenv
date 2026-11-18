@@ -21,6 +21,7 @@
 | M17 | Editors detection, "Open in <editor>" | MVP | backend + frontend | M5 | done |
 | M18 | Tray panel, app thumbnails, windows | MVP | backend + frontend | M3 | doing |
 | M19 | macOS port | Later | all | all | planned |
+| M20 | Native UI (egui) without WebView, replaces Tauri + React | Later | frontend | M1-M18 | planned |
 
 ## Acceptance criteria and test plan per module
 
@@ -45,3 +46,16 @@ Open: an end-to-end run in the Studio window (not automated).
 
 ### M18 tray, thumbnails, windows
 Accept: tray panel lists services; thumbnails render through headless Edge in a sandbox. Test: `thumbnails` unit tests; the tray has no automated test.
+
+### M20 Native UI (egui) without WebView
+Chosen by the boss 2026-11-18, not started ([D-021](DECISIONS.md#d-021-pure-rust-ui-with-eguieframe-instead-of-tauri--webview-chosen-not-started)).
+Plan: new crate `src-native/` (bin `zenv`) on `src-tauri/core`; dev builds use `ZENV_HOME=C:\zenv-dev` so the installed Tauri Zenv keeps
+running. Crates (versions checked 2026-11-18, recheck at start): eframe/egui/egui_extras(syntect)/egui_kittest 0.37, egui_commonmark 0.26,
+alacritty_terminal 0.26 (own widget; egui_term is stuck on egui 0.31), tray-icon 0.26.1, rfd 0.18; Lucide icon font vendored (ISC);
+single instance by a Windows mutex; Studio preview opens in the default browser; NSIS script without tauri-cli; Vitest -> Rust + kittest.
+Order: 1 shell, theme, dashboard (spike) -> 2 web servers, services -> 3 apps -> 4 runtimes, installers -> 5 tools (AI routers, tailnet,
+Docker) -> 6 logs, settings -> 7 tray, windows -> 8 Studio: files + editor, terminals, chat -> 9 installer, remove Tauri and React.
+Risk gates (at the spike unless named): builds and opens on `x86_64-pc-windows-gnu` (else glow renderer, then msvc); idle private memory
+<= 150 MB with the dashboard (else glow + smaller font atlas); the boss accepts the dashboard look against DESIGN.md (else restyle first);
+step 8 terminal runs `claude`, vim, truecolor, resize, paste (else open Windows Terminal); editor typing <= 16 ms/frame on a 1 MB file
+(else large files open in VS Code).
