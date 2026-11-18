@@ -75,6 +75,15 @@ screen the pack lists, each in its default, empty, loading and error state, and 
 in ONE run (no model round-trip per step), live so the boss watches. figlive enforces 1 and 2: it refuses to build
 otherwise and prints what is missing.
 - `node scripts/figlive.mjs .brain/design/proposal/build-plan.json --check`: the gate only; fix until it prints `plan ok`.
+- Edit, never a new file (boss 2026-11-11): when the `"save"` file exists, the plan `"open"`s that same path and its
+  steps change only what changes (`node.find` by name + `node.set`, or `edit.delete` a frame and rebuild that screen);
+  an edit is not held to the every-state rule (the rest is already in the file). `"replace": true` instead rebuilds it
+  from scratch (the old design is overwritten). A plan with neither (or one opening another file) is refused.
+- One tab per design in the boss's window: before the build figlive saves his unsaved edits in that file's tab (found
+  by path, so a same-named file of another project is never touched) and closes leftover clean "Untitled" tabs; the
+  save comes after `--hold`, so what he draws meanwhile is kept; after the build (or a failed one: nothing saved, the
+  file unchanged) it closes the live tab and shows the file there, reloaded (also without `--live` when the window is
+  open). A plan without `"save"` keeps the live tab: it is the only copy. A tab with unsaved work is never closed.
 - `node scripts/figlive.mjs <plan> --live`: hosts a live session on this machine and joins it in the boss's viewer
   window by itself (no click; `--no-viewer` prints the link only): the window on port 7800 (`FIGCRAFT_VIEWER_PORT`) is
   reused by every run, opened only when none answers there, so never open one yourself. The agent's cursor glides to

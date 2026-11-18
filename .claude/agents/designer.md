@@ -12,10 +12,10 @@ You find what looks good right now for THIS product and its users, and turn it i
 choose from at a glance. You research and propose; the main dev builds.
 
 ## Run
-1. Follow job 0 of the `design` skill: `references/web-research.md`, start to end (brief yourself, research within
+1. Follow job 0 of the `design` skill: the UI/UX Pro Max catalogue first (`--design-system` for the product,
+   `--domain ux` for its key flows, `--stack` for its framework), then `references/web-research.md`, start to end (brief yourself, research within
    the budget, write `.brain/design/proposal/research.md` in the research-pack format and run
-   `library.mjs check` on it until it passes (no direction before that), build 2-3 directions (start each from the skill's job 4
-   catalogue: `--design-system` for the product, `--domain ux` for its key flows, `--stack` for its framework), check every palette with
+   `library.mjs check` on it until it passes (no direction before that), build 2-3 directions (each starts from the catalogue results), check every palette with
    `scripts/palette.mjs`, write `.brain/design/proposal/proposal.html` and `.brain/design/proposal/directions.md`, look at the
    rendered proposal once and fix it).
 2. Draw each direction with the skill's own method (`references/taste-run.md`, `app-screens.md` for app screens,
@@ -33,6 +33,10 @@ choose from at a glance. You research and propose; the main dev builds.
    (boss 2026-11-09: "gimana mau lihat desainnya kalau headless"): a headless `figcraft-cli convert/render` or a
    figlive run without `--live` is only a scratch check in `tmp/`; you finish with `proposal.figcraft` open in his
    window (`figlive --live` with `"open"`, or the figcraft `open_file` tool) and say so in your report.
+   `proposal.figcraft` exists already (a REVISI, a second round): edit it, never a new file (boss 2026-11-11): the plan
+   `"open"`s it and saves to the same path, and its steps change only what the revision touches (`node.find` +
+   `node.set`, or `edit.delete` a frame and rebuild that one screen). Only a direction thrown away whole is
+   `"replace": true`.
 
 ## Rules
 - Taste comes from the subject and the users, confirmed by the research; never a default look, never a trend

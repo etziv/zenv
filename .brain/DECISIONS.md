@@ -28,6 +28,8 @@ for wablast.test and retribusi-h2h.test. Source: the boss 2026-10-19, hardening 
 
 ## D-007 OmniRoute stays next to 9router [active] 2026-10-23
 Decision: both AI routers remain installable Tools services (`ai_router.rs`), though the boss prefers 9router. Source: the boss, 2026-10-23.
+Codex uses 9router: `~/.codex/config.toml` default `model_provider = "ninerouter"`, model `my-combo`, key from env `NINEROUTER_API_KEY`; OmniRoute kept as `--profile omniroute`. Source: the boss, 2026-11-16 ("ganti ke 9router").
+Ask: api 9router tidak bisa dijangkau dari codex, codex tidak bisa konek router
 
 ## D-008 Windows first; macOS later [active] 2026-10-16
 Decision: build and test for Windows only; a macOS port (not iOS) starts only when the boss asks. Source: the boss.
@@ -91,6 +93,7 @@ G-005 2026-11-09 Do not filter Claude transcript entries by type before walking 
 G-006 2026-11-06 Do not run Vitest while a cargo build runs (also right after a Cargo.toml edit, likely rust-analyzer's rebuild): workers time out ("Timeout waiting for worker"); rerun once it settles.
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
 G-011 2026-11-09 Do not debug a one-off rustc "crate `X` required in rlib format" or "can't find crate for `std`" as code: rerun (passed each time; cause unproven, likely antivirus file locks).
+G-012 2026-11-16 Do not debug Codex "router unreachable" as a network bug first: OmniRoute and 9router both default to port 20128, so Codex set to the other router gets `401 Invalid API key` (proven with curl on `/v1/responses`); check which router owns 20128 and `model_provider` in `~/.codex/config.toml`.
 G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use".
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).

@@ -9,7 +9,8 @@
 // (or File > Join live session), and every step shows the agent's cursor gliding to the part it builds, with a chat
 // label of what it is doing; the viewer follows the agent (spotlight). Without --live the steps run back to back.
 // Plan (JSON): {"research": ".brain/design/proposal/research.md" | "none: <reason, no product screen>", "app": true
-//   (pack checked with --app), "open": "<file .figcraft or REST .json>" (optional: a new file), "save": "<path .figcraft>",
+//   (pack checked with --app), "open": "<file .figcraft or REST .json>" (optional: a new file), "save": "<path .figcraft>"
+//   (it exists: "open" it to edit, or "replace": true to rebuild; an edit builds only what it changes),
 //   "steps": [{"label": "Header", "batch": [{"command", "params", "as"}...]} |
 //             {"label": "Card", "draw": {"tool": "rectangle", "from": [x, y], "to": [x, y]}, "props": {node.set keys}} |
 //             {"label": "Title", "text": {"text": "...", "x": 0, "y": 0, "parent": id?, "props": {...}}} |
@@ -58,12 +59,43 @@ const idsIn = (r) => { const out = []; (function w(v) { if (!v || typeof v !== "
 // dialog. Every live run reuses that one window and opens it only when nothing answers there (one window per change
 // piled up, boss 2026-11-09).
 const VIEWER_PORT = String(process.env.FIGCRAFT_VIEWER_PORT || 7800);
-async function joinViewer(link, fonts = []) { // "joined", an error text, or null when no FigCraft answers on VIEWER_PORT
+async function attachViewer() { // the boss's window, or null when no FigCraft answers on VIEWER_PORT
   const a = fig(["--attach", VIEWER_PORT, "--timeout", "30"]);
-  const up = await Promise.race([a.init().then(() => true, () => false), sleep(3000).then(() => false)]);
-  let r = null;
-  if (up) { try { await loadFonts(a, fonts, true); await a.cmd("collab.join", { link }); r = "joined"; } catch (e) { r = e.message; } }
+  if (await Promise.race([a.init().then(() => true, () => false), sleep(3000).then(() => false)])) return a;
+  a.close(); return null;
+}
+let joinedDoc = null; // the viewer tab of this run's live session, closed when the run ends
+async function joinViewer(link, fonts = []) { // "joined", an error text, or null when no FigCraft answers on VIEWER_PORT
+  const a = await attachViewer(); if (!a) return null;
+  let r;
+  try { await loadFonts(a, fonts, true); await a.cmd("collab.join", { link }); r = "joined"; joinedDoc = ((await a.cmd("doc.list", {})).find((t) => t.active) || {}).id; } catch (e) { r = e.message; }
   a.close(); return r;
+}
+// One tab per design in the boss's window (boss 2026-11-11: runs piled up "Untitled" tabs). Before the engine opens the
+// file: its tab, found by path (`open_file` returns the open tab, unsaved edits kept), is saved when he has unsaved edits
+// in it, so an edit starts from them; leftover clean "Untitled" tabs (old live copies) are closed. A tab with unsaved
+// work is never closed, and another file's tab is never touched. true when a window answered.
+async function tidyViewer(out, log) {
+  const a = await attachViewer(); if (!a) return false;
+  try {
+    if (out && fs.existsSync(out) && (await a.call("open_file", { path: out })).document.dirty) { await a.cmd("file.save", {}); log("saved your unsaved edits in " + out + " first"); }
+    for (const t of (await a.cmd("doc.list", {})).reverse()) if (!t.dirty && t.name === "Untitled") await a.cmd("file.close", { index: t.index });
+  } catch (e) { log("could not tidy the FigCraft window (" + e.message + ")"); }
+  a.close(); return true;
+}
+// After the run: when the design is in the file (saved now, or unchanged after a failed run), the live tab goes (a window
+// marks it unsaved, but its content is in the file) and the window shows the file, reloaded. No file: the live tab is
+// the only copy and stays.
+async function showInViewer(out, fonts, log) {
+  const a = await attachViewer(); if (!a) return;
+  const inFile = out && fs.existsSync(out);
+  try {
+    const t = (await a.cmd("doc.list", {})).find((x) => x.id === joinedDoc);
+    if (t && inFile) { try { await a.cmd("doc.switch", { index: t.index }); await a.cmd("collab.leave", {}); await a.cmd("file.close", { index: t.index, force: true }); } catch (e) { log("the live tab stays open (" + e.message + ")"); } }
+    else if (t) log("no \"save\" in the plan: the live tab is the only copy of this design; save it from the window");
+    if (inFile) { await loadFonts(a, fonts, true); await a.call("open_file", { path: out, reload: true }); log("your FigCraft window shows " + out); }
+  } catch (e) { log("could not open " + out + " in the FigCraft window (" + e.message + "): open it yourself"); }
+  joinedDoc = null; a.close();
 }
 // a loaded font lives only in that app session (not saved in the file): the engine and the viewer each load it
 async function loadFonts(app, fonts, asData) { // the families loaded
@@ -80,12 +112,13 @@ async function openViewer(link, log, fonts) {
   for (let k = 0; k < 30; k++) { await sleep(700); if ((r = await joinViewer(link, fonts))) return say(r, "opened a FigCraft window"); }
   log("FigCraft did not answer on port " + VIEWER_PORT + ": open the link yourself");
 }
-// every screen of the pack built in every state, its default state in both modes, and no step for a screen the pack does not have
-export function coverage(steps, pack) {
+// every screen of the pack built in every state, its default state in both modes (an edit: only what it touches, the
+// rest is already in the file), and no step for a screen the pack does not have
+export function coverage(steps, pack, edit = false) {
   const sc = (pack.match(/^##[ \t]*Screens[^\n]*\n([\s\S]*?)(?=^##[ \t]|(?![\s\S]))/mi) || [])[1] || "";
   const names = sc.split(/^###[ \t]+/m).slice(1).map((b) => b.split("\n")[0].trim()), key = (n) => String(n).trim().toLowerCase();
   const fails = []; if (!names.length) fails.push("the pack lists no ### screens");
-  for (const n of names) { const have = new Set(steps.filter((s) => s.screen && key(s.screen) === key(n)).map((s) => s.state || "default"));
+  if (!edit) for (const n of names) { const have = new Set(steps.filter((s) => s.screen && key(s.screen) === key(n)).map((s) => s.state || "default"));
     const miss = STATES.filter((x) => !have.has(x)); if (miss.length) fails.push("screen " + n + ": no step builds its " + miss.join(", ") + " state");
     const modes = new Set(steps.filter((s) => s.screen && key(s.screen) === key(n) && (s.state || "default") === "default").map((s) => s.mode || "light"));
     const noMode = MODES.filter((m) => !modes.has(m)); if (noMode.length) fails.push("screen " + n + ": no step builds its default state in " + noMode.join(", ") + " mode"); }
@@ -105,14 +138,18 @@ export function fontGate(plan) {
   if (dflt.length && !/\S/.test(plan.defaultFonts || "")) fails.push("draws in " + dflt.join(", ") + ": a FigCraft built-in or system face, the look of every AI design. Fetch the pack's type (design/scripts/fonts.mjs) and list the files in \"fonts\", or write why this face is right in \"defaultFonts\"");
   return fails;
 }
+// an edit opens the saved .figcraft and changes only what changes (boss 2026-11-11: continue the design, not a new file)
+const same = (a, b) => { const n = (x) => (process.platform === "win32" ? path.resolve(x).toLowerCase() : path.resolve(x)); return n(a) === n(b); };
+export const isEdit = (plan) => !!(plan.open && plan.save && /\.figcraft$/i.test(plan.open) && same(plan.open, plan.save));
 export function checkPlan(plan) {
   const steps = plan.steps || [], fails = steps.length ? [] : ["the plan has no steps"];
+  if (plan.save && fs.existsSync(plan.save) && !isEdit(plan) && !plan.replace) fails.push(plan.save + " exists: \"open\" that same file to edit the design (steps change only what changes), or \"replace\": true to rebuild it (the old design is overwritten)");
   if (/^none:\s*\S/i.test(plan.research || "")) return fails;
   fails.push(...fontGate(plan));
   if (!plan.research) return fails.concat('"research" is missing: write the research pack first (design skill, job 0), then name it here');
   const r = spawnSync(process.execPath, [LIB, "check", plan.research, ...(plan.app ? ["--app"] : [])], { encoding: "utf8" });
   if (r.status !== 0) return fails.concat("research pack not complete (library.mjs check):\n  " + (r.stdout || r.stderr || "").trim().split("\n").filter((l) => /FAIL/.test(l)).join("\n  "));
-  return fails.concat(coverage(steps, fs.readFileSync(plan.research, "utf8")));
+  return fails.concat(coverage(steps, fs.readFileSync(plan.research, "utf8"), isEdit(plan)));
 }
 
 export async function run(plan, opt = {}) {
@@ -122,9 +159,11 @@ export async function run(plan, opt = {}) {
   const roots = live ? [] : [...new Set([process.cwd(), ...(out ? [path.dirname(out)] : []), ...(plan.open ? [path.dirname(path.resolve(plan.open))] : [])])].flatMap((d) => ["--automation-write-root", d]);
   if (out) fs.mkdirSync(path.dirname(out), { recursive: true });
   const f = fig(roots); await f.init(); const loaded = await loadFonts(f, plan.fonts || []);
-  const t0 = Date.now(); let cur = [0, 0];
+  const win = opt.viewer !== false && await tidyViewer(out, log);
+  const t0 = Date.now(); let cur = [0, 0], link = null, ms = 0, fontFails = [];
+  const results = [];
+  try {
   if (plan.open) await f.call("open_file", { path: path.resolve(plan.open) }); else await f.cmd("file.new", {});
-  let link = null;
   if (live) {
     const h = await f.cmd("collab.host", { bind: "local" }); link = h.link;
     log("LIVE: open this link in FigCraft (or File > Join live session):\n  " + link);
@@ -139,7 +178,6 @@ export async function run(plan, opt = {}) {
     for (let i = 1; i <= n; i++) { const x = cur[0] + (to[0] - cur[0]) * i / n, y = cur[1] + (to[1] - cur[1]) * i / n; await f.cmd("collab.cursor", { x, y }); await sleep(25 * pace); }
     cur = to;
   };
-  const results = [];
   for (const [i, s] of (plan.steps || []).entries()) {
     const label = s.label || "step " + (i + 1);
     if (live) await f.cmd("collab.cursorChat", { text: label.slice(0, 100) });
@@ -172,13 +210,18 @@ export async function run(plan, opt = {}) {
   const gated = !/^none:\s*\S/i.test(plan.research || "") && !/\S/.test(plan.defaultFonts || "");
   const unpicked = gated ? used.filter((x) => x.available && !loaded.includes(x.family)).map((x) => x.family) : [];
   if (unpicked.length) log("FONT NOT PICKED: " + unpicked.join(", ") + " drawn but not loaded from \"fonts\" (a built-in, system or default face): give that text a picked face, or say why in \"defaultFonts\"");
-  const fontFails = [...fallback, ...unpicked];
-  if (out) await f.call("save_file", { path: out });
-  const ms = Date.now() - t0;
-  log("figlive: " + results.length + " steps in " + ms + " ms" + (out ? ", saved " + out : ""));
+  fontFails = [...fallback, ...unpicked];
+  ms = Date.now() - t0;
+  log("figlive: " + results.length + " steps in " + ms + " ms");
+  // the hold comes before the save: what the boss draws while the session stays open is kept
   if (live && opt.hold) { log("session open for " + opt.hold + " s"); await sleep(opt.hold * 1000); }
-  if (live) { try { await f.cmd("collab.stop", {}); } catch { /* ended */ } }
-  f.close();
+  if (out) { await f.call("save_file", { path: out }); log("saved " + out); }
+  } catch (e) { log("run failed, nothing saved" + (out && fs.existsSync(out) ? ": " + out + " is unchanged" : "")); throw e; }
+  finally {
+    if (live) { try { await f.cmd("collab.stop", {}); } catch { /* ended */ } }
+    f.close();
+    if (opt.viewer !== false && (live || win)) await showInViewer(out, plan.fonts || [], log);
+  }
   return { results, ms, link, fontFails };
 }
 
@@ -212,7 +255,17 @@ async function selftest() {
     ["a picked face passes", fontGate({ steps: [{ text: { props: { fontFamily: "Hanken Grotesk" } } }] }).length === 0],
     ["a missing font file fails", fontGate({ fonts: [path.join(dir, "nope.ttf")], steps: [] }).some((f) => /nope\.ttf/.test(f))],
     ["an explicit state default counts for dark", coverage([...all("Editor"), ...all("Inbox").filter((s) => s.mode !== "dark"), { screen: "Inbox", state: "default", mode: "dark" }], pack).length === 0],
-    ["a screen not in the pack fails", coverage([...all("Editor"), ...all("Inbox"), { label: "Ghost", screen: "Settings" }], pack).some((f) => /Settings/.test(f))]);
+    ["a screen not in the pack fails", coverage([...all("Editor"), ...all("Inbox"), { label: "Ghost", screen: "Settings" }], pack).some((f) => /Settings/.test(f))],
+    ["an edit touches one screen state without rebuilding the rest", coverage([{ screen: "Inbox", state: "error" }], pack, true).length === 0],
+    ["an edit of a screen not in the pack fails", coverage([{ label: "Ghost", screen: "Settings" }], pack, true).some((f) => /Settings/.test(f))]);
+  fs.writeFileSync(path.join(dir, "old.figcraft"), "x");
+  const old = { research: "none: test", save: path.join(dir, "old.figcraft"), steps: [{ label: "x" }] };
+  gate.push(["an existing design is not silently rebuilt into a new file", checkPlan(old).some((f) => /exists/.test(f))],
+    ["opening the existing design (edit) passes", checkPlan({ ...old, open: old.save }).length === 0],
+    ["\"replace\": true rebuilds it", checkPlan({ ...old, replace: true }).length === 0],
+    ["another file opened and saved over the design needs \"replace\"", checkPlan({ ...old, open: path.join(dir, "template.figcraft") }).some((f) => /exists/.test(f))],
+    ["a template .figcraft saved as a new file is not an edit (every state checked)", !isEdit({ open: path.join(dir, "template.figcraft"), save: path.join(dir, "new.figcraft") })],
+    ["the same file in other letter case is an edit", process.platform !== "win32" || isEdit({ open: old.save.toUpperCase(), save: old.save })]);
   const r = await run(plan, { live: true, viewer: false, wait: 30, hold: 2, onLink: (l) => { watch(l); }, log: () => {} });
   await sleep(300);
   const doc = viewer ? JSON.stringify(await viewer.call("inspect_document", { depth: 4 })) : "";
@@ -237,7 +290,7 @@ else if (argv[0] && !argv[0].startsWith("--")) {
   const plan = JSON.parse(fs.readFileSync(argv[0], "utf8")), fails = checkPlan(plan);
   for (const f of fails) console.log("FAIL " + f);
   if (fails.length) { console.log("[figlive] not built: research first, then a plan that builds every researched screen in every state, its default in light and dark."); process.exit(1); }
-  if (argv.includes("--check")) { console.log("[figlive] plan ok: research pack complete, every screen in every state, light and dark."); process.exit(0); }
+  if (argv.includes("--check")) { console.log("[figlive] plan ok: " + (isEdit(plan) ? "an edit of " + plan.open : /^none:/i.test(plan.research || "") ? "no product screen" : "research pack complete, every screen in every state, light and dark") + "."); process.exit(0); }
   run(plan, { live: argv.includes("--live"), viewer: !argv.includes("--no-viewer"), wait: num("--wait", 120), hold: num("--hold", 60), pace: num("--pace", 1) })
     .then((r) => process.exit(r.fontFails.length ? 1 : 0)).catch((e) => { console.error("figlive: " + e.message); process.exit(1); });
 } else console.log("usage: figlive.mjs <plan.json> [--check] [--live] [--no-viewer] [--wait 120] [--hold 60] [--pace 1] | --selftest");

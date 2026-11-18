@@ -9,6 +9,8 @@ Read `.brain/BRIEF.md` (purpose, users, platform, modules), the boss's reference
 existing DESIGN.md (a redesign keeps what works), and `.brain/design/proposal/research.md` if an earlier run left one:
 reuse it, research only what is missing. Write down: the category (music player, field-survey app, SaaS
 dashboard...), the platform (Android / web / both), the 3-5 key screens, and the feeling the product must give.
+Then, still before the web, the UI/UX Pro Max catalogue (design SKILL.md section "First"): `--design-system` for the
+product; its product type, style and palette words seed your searches below.
 
 ## 2. Research (budget: about 12 searches, 15 page reads, 8 screenshots)
 Search first, read the few best results, screenshot what must be SEEN. Prefer recent work (this year and last).

@@ -84,7 +84,7 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
 | MODULES.md | 40 rows | Roadmap table + acceptance criteria and test plan (numeric targets) per module. |
 | DESIGN.md | 120 lines | Visual system and every screen with its states. |
 | FLOWS.md | 25 lines per flow | `## F-<id> <name>` + Trigger, steps naming their code in backticks, Rules, `History:` (`- <date> task <id>: <change>`). Always the current behaviour; updated in the task that changes it. |
-| DECISIONS.md | - | `## D-<id> <title> [active\|superseded by D-x] <date>` + Decision + Why (3 lines). Gotchas and dead ends: `G-<id> <date> Do not <X> because <Y>` or `G-<id> <date> Tried <X>, abandoned because <Y>` (max 30, delete when untrue). |
+| DECISIONS.md | - | `## D-<id> <title> [active\|superseded by D-x] <date>` + Decision + Why (3 lines) + an optional `Ask:` line. Gotchas and dead ends: `G-<id> <date> Do not <X> because <Y>` or `G-<id> <date> Tried <X>, abandoned because <Y>` (max 30, delete when untrue). |
 | contracts/ | 150 lines per file | Interfaces between modules and screens, edited in place. |
 | handoff/ | temporary | Plans, reports, PR text; the task script archives a task's files on ship. |
 | infra.md | generated | Never edit by hand. |
@@ -100,8 +100,19 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
   checked it against the code.
 - **Facts that rot fast are not copied**: a test count, a CI state or a commit SHA in memory names its date (`as of
   2026-11-06`) or points to its source; `lint` reports one that does not (handoff/ and `## Test results` are exempt).
+- **The boss's names are memory.** A thing he calls by a name `mem` cannot find ("glyph portabel", "server 149") is a
+  gap: once you found it (`sessions`, the code), write it the same day where that thing is described, under its own
+  `##` heading that holds his words (and the English term), with where it is and how to start or reach it. Facts
+  that only lived in chat were re-learned in three glyph sessions and then missed (boss 2026-11-11).
 - **Dead ends are memory.** An approach you tried and dropped becomes a `G-` line the same day, so no later session or
-  other agent repeats it. The newest three are printed at every session start.
+  other agent repeats it. Three are printed at every session start: the ones the open task's title, goal and files
+  name first, then the newest.
+- **Name the code, and the boss's wording.** An entry that names its code in backticks (a path, `TaskController`,
+  `TaskRejections.reject`) is shown by itself the first time an agent opens that file (`near`, below); one that does
+  not stays silent. Memory is English and he asks in Indonesian: an entry he will ask about gets one `Ask:` line
+  under it with 2-3 of HIS phrasings (`Ask: upload file besar gagal, unggah berkas terputus`), taken from what he
+  said (`sessions`, a dream's `ASK:` proposals), not invented. Word search then finds it without Ollama (synthetic
+  test 2026-11-14, 8 Indonesian paraphrases of English notes: found 4 -> 8).
 - **A replaced decision is marked, not deleted**: `[superseded by D-x]` in its heading. Superseded entries older than
   14 days that nobody recalled for 14 days move to `archive/DECISIONS.md` on ship, with a one-line stub left behind
   and every link rewritten to follow them. Often-recalled entries stay. Nothing is ever deleted; git keeps all history.
@@ -125,7 +136,7 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
 
 ## Automatic (you do nothing)
 - **Session start** (also after `/clear` and a compact): the brief prints the stage, the open task with its plan goal,
-  the next unrecorded plan step and the last test result, where the last session stopped, the newest dead ends, a
+  the next unrecorded plan step and the last test result, where the last session stopped, three dead ends, a
   hygiene warning if the last ship found one, and STATUS. It stays under 9,000 characters (Claude Code cuts hook
   output at 10,000 to a 2,000-character preview): over budget it drops brain, the STATUS tail, resume, modules, dead
   ends in that order and names them on its last line, the size meter (`[brief] N chars`).
@@ -137,13 +148,31 @@ the code of each step in backticks (`TaskBoardViewModel.reject`, `TaskController
   not, ms; never the text): `memory.mjs prompt-stats` sums it.
 - **Session start** also registers the project in `~/.memoir/projects.json` (copies under the temp dir never), so
   `lessons` can search the other projects.
-- **After a Write/Edit under `.brain/`**: `check` reports a secret value or that file's lint issues at once. Fix
-  it in the same step.
+- **The first Read, Edit or Write of a code file** (`near`): up to 2 pointers to the active D-/G-/F- entries that
+  name that file (its path, its class-like file name, or a distinctive symbol only it defines), dead ends first, once
+  per file and agent, subagents included; silent when nothing names it. A link by name, not a search: check the
+  entries before changing the file.
+- **After a Write/Edit under `.brain/`**: `check` reports a secret value or that file's lint issues at once, and a
+  D-/G- entry the edit added that names no source. Fix it in the same step.
 - **Before a compact and at session end**: `capture` saves the working position to the git directory (never
   committed): project files edited, the last checks with pass/fail, the boss's last two requests. Secrets are redacted.
 - **Every ship** (`task.mjs ship`): `maintain` rebuilds infra.md, archives cold superseded decisions and runs `lint`
   (limits, duplicate ids, near-duplicates, two active decisions on one subject, stale paths, broken links). Never
-  blocks a ship; when it reports issues, fix them in the next memory edit (`memory.mjs lint` lists them).
+  blocks a ship; when it reports issues, fix them in the next memory edit (`memory.mjs lint` lists them). It also
+  says when enough was said since the last dream (25 messages, 3 worded like a decision, or 8 older than a week).
+
+## Dream: what was said and never written (`memory.mjs dream`)
+Recording a decision depends on noticing it while working on something else; the dream is the pass afterwards.
+1. `memory.mjs dream` packs the boss's messages since the last pass (secret-redacted; a message that mentions a
+   credential is left out) and the ids memory holds into `.brain/graphify-out/dream-input.txt` (never committed).
+   No LLM, at most ~6,000 tokens: oldest first; what did not fit comes in the next pass after `--done`.
+2. ONE `worker` on haiku: "Read .brain/graphify-out/dream-input.txt and do the job it describes". It writes at most
+   15 proposals (`D:`, `G:`, `NAME:`, `CONFLICT:`, `ASK:`) to `.brain/graphify-out/dream-proposals.txt` (never committed), each quoting him.
+3. You check every proposal against the code and `mem` (a proposal is a claim about what was SAID), write what holds
+   by the rules above, list the ones that need him in the next FINAL card, then `memory.mjs dream --done`.
+Run it when a ship says so, or when he asks what was forgotten. Sessions Claude Code already deleted still count:
+the session index keeps the boss's messages of a cleaned-up transcript (the newest 300 sessions, 600 characters
+each, on this machine only; delete `.brain/graphify-out/sessions.index.json` to forget them).
 
 ## Checking the search itself
 `.brain/eval.json` holds real questions and the entry that answers each (`[{"q": "tugas ditolak warna merah", "expect": "D-042"}]`).
