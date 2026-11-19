@@ -24,6 +24,7 @@ description: "React / TypeScript depth (incl. Inertia React + Vite): hooks, stat
 | Reviewing TypeScript | `references/review-typescript.md` | ~2.2k |
 
 ## Kit corrections (read before the reference)
+- **Comments** (`clean-code`): the references' explanatory comments, prose docblocks (PHPDoc/JSDoc/KDoc descriptions), `TODO`s and commented-out code are not to be copied; a docblock holds type tags only, and "missing docblocks/comments" is never a finding.
 - **Inertia, not Next.js**: no App Router, server components, `"use client"` / `"use server"`, Server Actions or
   `NEXT_PUBLIC_*`. Data comes as page props; forms use Inertia `useForm`; fetching more is partial reloads,
   deferred props and prefetch (Inertia v2), not TanStack/SWR. Component tests of a page mock `@inertiajs/react`.

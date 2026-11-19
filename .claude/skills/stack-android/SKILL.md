@@ -22,6 +22,7 @@ description: "Android / Kotlin depth for native apps: coroutines and Flow (struc
 | Reviewing Kotlin/Android code | `references/review-kotlin.md` | ~1.9k |
 
 ## Kit corrections (read before the reference)
+- **Comments** (`clean-code`): the references' explanatory comments, prose docblocks (PHPDoc/JSDoc/KDoc descriptions), `TODO`s and commented-out code are not to be copied; a docblock holds type tags only, and "missing docblocks/comments" is never a finding.
 - **Architecture**: multi-module layering with a UseCase for every call is speculative; follow ARCHITECTURE.md (a
   ViewModel calling a repository is fine). In `review-kotlin`, "ViewModel logic must be in UseCases" is not CRITICAL;
   it hands off to a `security-reviewer` that does not exist (our `security` agent covers it).

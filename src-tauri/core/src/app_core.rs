@@ -227,6 +227,39 @@ impl Core {
         }
     }
 
+    pub fn spawn_background(self: &Arc<Self>) {
+        let core = self.clone();
+        std::thread::spawn(move || core.start_autostart_services());
+        let tailnet = Arc::downgrade(self);
+        std::thread::Builder::new()
+            .name("tailnet-names".into())
+            .spawn(move || loop {
+                std::thread::sleep(Duration::from_secs(60));
+                let Some(core) = tailnet.upgrade() else { return };
+                if let Err(e) = core.follow_tailnet_names() {
+                    tracing::warn!(error = %e, "tailnet names not followed");
+                }
+            })
+            .ok();
+        let updater = Arc::downgrade(self);
+        std::thread::Builder::new()
+            .name("router-update".into())
+            .spawn(move || {
+                std::thread::sleep(Duration::from_secs(90));
+                loop {
+                    let Some(core) = updater.upgrade() else { return };
+                    for component in core.routers_due_for_update() {
+                        if let Err(e) = core.router_update(component, false) {
+                            tracing::warn!(%component, error = %e, "auto-update failed");
+                        }
+                    }
+                    drop(core);
+                    std::thread::sleep(Duration::from_secs(6 * 3600));
+                }
+            })
+            .ok();
+    }
+
     /// Stops app programs, web servers (gracefully) and PHP runtimes. Called on app exit.
     pub fn shutdown(&self) {
         self.studio.close_all();

@@ -276,9 +276,9 @@ the same face: in four rounds, the screens that skipped this step were scored as
 ### 2.4 Build the shell
 
 Build the frame first, empty: the sidebar or rail, the top bar if the shell has one, the canvas with
-its gutters, the title row (§3 and §4). `<skill>/assets/app.css` is a neutral start for all of it:
+its gutters, the title row (§3 and §4). `<skill>/assets/app.css` is a neutral start for all of it (copied without its comments, `clean-code`):
 copy it into the project and put the sheet's tokens in its `:root`. Look at it at 1440 and at 390 before any data goes in. Do the
-grid arithmetic now and write it in a comment: the column count, the gutter, and the sum that proves
+grid arithmetic now and write it in the plan file: the column count, the gutter, and the sum that proves
 the cards land on the canvas edges.
 
 ### 2.5 Put in the data

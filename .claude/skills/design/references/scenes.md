@@ -41,7 +41,9 @@ composition, not decoration added at the end.
 
 Copy the shared stage and the dealt scene's files into the project (`assets/scenes/stage.css`,
 `stage.js`, `<id>.css`, `<id>.js`). Each scene file's header comment lists the markup it expects and
-its options; `assets/scenes/demo/<id>.html` is a complete working page to read beside it.
+its options; `assets/scenes/demo/<id>.html` is a complete working page to read beside it. Read the
+header at the source, then delete the comments from the project's copy: the comment gate (`clean-code`)
+refuses them in new files.
 
 ```html
 <head>
@@ -69,7 +71,20 @@ its options; `assets/scenes/demo/<id>.html` is a complete working page to read b
 - Load SplitText (`gsap@3.15.0/dist/SplitText.min.js`) only when a scene file says it needs it.
 - `Stage.smooth()` adds weighted wheel scrolling (Lenis at lerp 0.12). It stays off for touch and for
   reduced motion. Leave it out on a quiet page; the scenes work either way.
-- `Stage.init()` starts every `[data-scene]` on the page. A page with two scenes loads both files.
+- `Stage.init()` starts every `[data-scene]` on the page through the file that registers
+  `Scenes['<id>']`. A page with two scenes loads both files.
+- `Stage.scene(root, { hold, scrub, build, phone, rest })`: `root` is the `<section class="scene">` holding one
+  `.scene-stage`; `hold` is the screens of scroll the stage is held for (1-4; the section is hold + 1 screens
+  tall); `scrub` is `true` (locked to the scrollbar) or seconds of catch-up (0.3-0.8 reads as weight);
+  `build(tl, ctx)` adds tweens to a timeline that runs 0 to 1 over the hold, `ctx = { root, stage, phone, q }`;
+  `phone` is `'same'`, `'rest'` (the finished composition) or `{ hold, build }`; `rest(ctx)` adds what the
+  finished composition needs. It sets `--p` (0-1) and `data-beat` on the root for CSS and captions.
+- `Stage.split(el, 'lines' | 'words' | 'chars')` gives masked split text (SplitText when loaded, word spans
+  with an `aria-label` otherwise). `Stage.ready()` resolves when fonts and the scenes' pictures are in and
+  refreshes the triggers.
+- Without `.is-live` (no script, a failed CDN, reduced motion, a phone set to `'rest'`) a scene is an
+  ordinary section showing its finished composition; the stage uses `overflow: clip`, never `hidden`, which
+  would turn it into a scroll container.
 - The versions are pinned. Do not change them to `@latest` or an unpinned major.
 
 ## 3. Filling it

@@ -2,11 +2,15 @@ pub mod migrations;
 
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
+use std::time::Duration;
 
-use rusqlite::{Connection, Transaction};
+use rusqlite::{Connection, ErrorCode, Transaction};
 
 use crate::error::{AppError, AppResult, IoContext};
 use crate::util::file_timestamp;
+
+const OPEN_RETRIES: usize = 30;
+const OPEN_RETRY_DELAY: Duration = Duration::from_millis(100);
 
 /// SQLite metadata store. A single connection behind a mutex is plenty for a
 /// desktop app; WAL keeps readers from blocking on writers.
@@ -17,8 +21,11 @@ pub struct Db {
 
 impl Db {
     pub fn open(path: &Path, backups_dir: &Path) -> AppResult<Self> {
-        let mut conn = Connection::open(path)?;
-        configure(&conn)?;
+        let mut conn = retry_transient_io(OPEN_RETRY_DELAY, || {
+            let conn = Connection::open(path)?;
+            configure(&conn)?;
+            Ok(conn)
+        })?;
         let backup = |c: &Connection, from: u32| backup_before_migration(c, backups_dir, from);
         let report = migrations::migrate(&mut conn, migrations::MIGRATIONS, Some(&backup))?;
         Ok(Db { conn: Mutex::new(conn), schema_version: report.to })
@@ -54,6 +61,20 @@ impl Db {
     }
 }
 
+fn retry_transient_io<T>(delay: Duration, mut attempt: impl FnMut() -> AppResult<T>) -> AppResult<T> {
+    let mut retries = 0;
+    loop {
+        match attempt() {
+            Err(AppError::Database(rusqlite::Error::SqliteFailure(e, _))) if e.code == ErrorCode::SystemIoFailure && retries < OPEN_RETRIES => {
+                retries += 1;
+                tracing::warn!(extended_code = e.extended_code, retries, "database busy after an earlier Zenv exited, retrying");
+                std::thread::sleep(delay);
+            }
+            other => return other,
+        }
+    }
+}
+
 fn configure(conn: &Connection) -> AppResult<()> {
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.pragma_update(None, "busy_timeout", 5000)?;
@@ -76,6 +97,42 @@ fn backup_before_migration(conn: &Connection, backups_dir: &Path, from: u32) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn io_failure() -> AppError {
+        AppError::Database(rusqlite::Error::SqliteFailure(rusqlite::ffi::Error::new(1546), Some("disk I/O error".into())))
+    }
+
+    #[test]
+    fn open_retries_a_transient_io_failure_then_succeeds() {
+        let mut calls = 0;
+        let out = retry_transient_io(Duration::ZERO, || {
+            calls += 1;
+            if calls < 3 { Err(io_failure()) } else { Ok(calls) }
+        });
+        assert_eq!(out.unwrap(), 3);
+    }
+
+    #[test]
+    fn open_gives_up_after_the_retry_budget() {
+        let mut calls = 0;
+        let out: AppResult<()> = retry_transient_io(Duration::ZERO, || {
+            calls += 1;
+            Err(io_failure())
+        });
+        assert!(out.is_err());
+        assert_eq!(calls, OPEN_RETRIES + 1);
+    }
+
+    #[test]
+    fn open_does_not_retry_other_errors() {
+        let mut calls = 0;
+        let out: AppResult<()> = retry_transient_io(Duration::ZERO, || {
+            calls += 1;
+            Err(AppError::Database(rusqlite::Error::InvalidQuery))
+        });
+        assert!(out.is_err());
+        assert_eq!(calls, 1);
+    }
 
     #[test]
     fn reopening_a_file_database_keeps_data() {

@@ -26,6 +26,7 @@ description: "Laravel / PHP depth for building and reviewing: Laravel patterns, 
 | Reviewing PHP code: priorities and checks | `references/review-php.md` | ~1.4k |
 
 ## Kit corrections (read before the reference)
+- **Comments** (`clean-code`): the references' explanatory comments, prose docblocks (PHPDoc/JSDoc/KDoc descriptions), `TODO`s and commented-out code are not to be copied; a docblock holds type tags only, and "missing docblocks/comments" is never a finding.
 - **Laravel 11+** (check `composer.json`): no `app/Http/Kernel.php`, `$routeMiddleware`, `RouteServiceProvider` or
   `AuthServiceProvider $policies`; middleware, CSRF exceptions and exception handling live in `bootstrap/app.php`;
   policies are auto-discovered (or `Gate::policy`); `routes/api.php` and Sanctum exist only after `install:api`; models

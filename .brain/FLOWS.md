@@ -14,7 +14,8 @@ History:
 - 2026-11-09 adopted
 
 ## F-002 Create an app (local site)
-Trigger: the boss saves the New app dialog (`SiteFormDialog`).
+Trigger: the boss saves the New app dialog (`SiteFormDialog`, native `pages/apps/form.rs`); both shells call `Core.create_site`
+(Docker: `Core.create_docker_site`), which ends with `Core.sync_app_process`.
 1. `SiteManager.create` holds the sites lock (`SiteManager.guard`) and checks the input (`SiteManager.validate`: folders, domain via `validate_domain`).
 2. `SiteManager.insert_row` stores it as pending (disabled apps stop here).
 3. `SiteManager.apply_or_undo` runs `apply_service` for every server that may serve it: render all enabled apps into a staged folder,
@@ -23,6 +24,7 @@ Trigger: the boss saves the New app dialog (`SiteFormDialog`).
 Rules: no app row without a working configuration ([D-001](DECISIONS.md#d-001-zenv-never-edits-a-server-installation-it-validates-before-activating)).
 History:
 - 2026-11-09 adopted
+- 2026-11-19 task 13: create/update/enable/delete moved from the Tauri commands into `Core` for both shells
 
 ## F-003 Install a version from its official source
 Trigger: Install in a component page (`InstallDialog`) calls `installer_install`.
