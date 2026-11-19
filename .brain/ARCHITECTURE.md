@@ -21,6 +21,11 @@ Platform: other: Windows desktop app (Windows 10/11 x64, WebView2). macOS later,
   sites, studio, tools, tray, web-servers), `lib/api/` (typed `invoke` client, queries, types), `components/ui/` (shadcn).
 - `src-tauri/src/` Tauri shell: `commands.rs` (the whole IPC surface), `lib.rs` (setup, windows, command list),
   `studio_window.rs`, `router_window.rs`, `tray.rs`.
+- `src-native/` crate `zenv-native` (M20, D-021; member of the `src-tauri` workspace, bin `zenv-native` until Tauri goes):
+  egui/eframe 0.37 UI on `Core` directly. `app.rs` (frame, tasks, toasts), `shell.rs` (header, port LED rail), `pages/<area>.rs`
+  (page struct + pure `view` fns; data via `loader::Loader`, writes via `Action::Run(Task)`), `widgets.rs`, `theme.rs` (DESIGN.md
+  tokens), `lucide.rs` (generated icon consts), `assets/fonts/` (Chakra Petch, IBM Plex Sans, JetBrains Mono TTF, Lucide; OFL/ISC).
+  Tests: `tests/*.rs` egui_kittest; `--ignored render_dashboard_png` writes `src-tauri/target/native-shots/*.png`.
 - `src-tauri/core/` crate `zenv-core`: all domain logic, no GUI dependency; `src/storage/migrations/*.sql`; `tests/*_e2e.rs`.
 - `src-tauri/core/templates/<server>/` server config templates (minijinja, `include_str!` in `config_generator`); `public/file-icons/` vendored Material Icon Theme SVGs (MIT).
 - `scripts/`: `with-toolchain.mjs` (Rust env), `copy-installer.mjs`, `check-nsis-template.mjs`; `installer/Zenv-setup.exe` output.
@@ -47,7 +52,7 @@ Studio windows are labelled `studio-<site id>`; terminals and chats belong to th
 ## Verification commands (exact; used by builders and QA)
 - build: `npm run build` (tsc + vite) and `node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml`
 - lint: `npm run typecheck` (no ESLint/Clippy configured)
-- test: `npm test` (Vitest) and `npm run test:rust` (zenv-core unit tests)
+- test: `npm test` (Vitest), `npm run test:rust` (zenv-core unit tests), `test-native` in project.json (zenv-native kittest)
 - other: `npm run test:e2e` with `ZENV_TEST_*` roots (real Apache/Nginx/PHP/FrankenPHP/MySQL/...); `npm run installer`
   builds `installer/Zenv-setup.exe`; `npm run check:nsis` after a Tauri CLI upgrade.
 

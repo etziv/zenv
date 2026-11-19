@@ -92,6 +92,12 @@ Rejected: Slint 1.19 (GPL-3.0 or attribution licence, weaker terminal/editor wid
 Source: the boss, 2026-11-18 ("buat versi pure rustnya", then on the PROPOSAL card "A jangan kerjakan dulu, buat task dulu aja"), task 12.
 Ask: versi pure rust, tanpa webview, ganti tauri ke egui, seperti figcraft
 
+## D-022 The native UI keeps the current layout and design (no redesign) [active] 2026-11-18
+Decision: every native (egui) screen reproduces the React screen it replaces: same layout, sections, order, texts, controls and
+DESIGN.md tokens; the React UI is the visual reference until Tauri goes (M20 step 9).
+Why: the boss wants the same app, only without the WebView.
+Source: the boss, 2026-11-18, task 13 ("untuk uinya design layoutnya harus tetap sama lo jangan berubah").
+
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
@@ -100,9 +106,11 @@ G-004 2026-11-06 Do not close the boss's running Zenv to install a build: check 
 G-005 2026-11-09 Do not filter Claude transcript entries by type before walking `parentUuid`: `attachment` entries are links in the chain (`transcript_lines`).
 G-006 2026-11-06 Do not run Vitest while a cargo build runs (also right after a Cargo.toml edit, likely rust-analyzer's rebuild): workers time out ("Timeout waiting for worker"); rerun once it settles.
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
-G-011 2026-11-09 Do not debug a one-off rustc "crate `X` required in rlib format" or "can't find crate for `std`" as code: rerun (passed each time; cause unproven, likely antivirus file locks).
+G-011 2026-11-09 Do not debug rustc "crate `X` required in rlib format", "can't find crate" or "only metadata stub found for `std`" as code: rerun with `-j 2` (task 13: full parallelism failed 3 times in a row, `-j 2` passed every time; cause unproven, likely antivirus file locks).
 G-012 2026-11-16 Do not debug Codex "router unreachable" as a network bug first: OmniRoute and 9router both default to port 20128, so Codex set to the other router gets `401 Invalid API key` (proven with curl on `/v1/responses`); check which router owns 20128 and `model_provider` in `~/.codex/config.toml`.
 G-013 2026-11-18 Do not leave `task.mjs init-repo` [setup] commits on local `main` before a merge-mode ship: the PR squashes them, the ship's `pull --ff-only` then fails silently and local `main` misses the task (task 12; fixed with `git merge origin/main`, boss "sync").
 G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use" (STATUS open issue 2026-11-09: mysqld 9.7 on 3306).
+G-014 2026-11-18 Do not use eframe's wgpu renderer for the native UI: it idled at 441-462 MB private on this PC, glow at 57 MB (task 13).
+G-015 2026-11-18 Do not screenshot a native window with CopyFromScreen after SetForegroundWindow: Windows refuses the focus and you capture another app; use PrintWindow(hwnd, dc, 2) (task 13).
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).
