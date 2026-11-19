@@ -320,37 +320,17 @@ pub async fn site_detect(core: CoreState<'_>, path: String) -> AppResult<Detecte
 
 #[tauri::command]
 pub async fn site_create(core: CoreState<'_>, input: SiteInput) -> AppResult<SiteView> {
-    blocking(&core, move |c| {
-        let view = c.sites.create(&input)?;
-        c.sync_app_process(&view.site.id, false);
-        Ok(view)
-    })
-    .await
+    blocking(&core, move |c| c.create_site(&input)).await
 }
 
 #[tauri::command]
 pub async fn site_update(core: CoreState<'_>, id: String, input: SiteInput) -> AppResult<SiteView> {
-    blocking(&core, move |c| {
-        let before = c.sites.get(&id)?;
-        let view = c.sites.update(&id, &input)?;
-        let moved = before.upstream_port != view.site.upstream_port || before.project_root != view.site.project_root;
-        c.sync_app_process(&id, moved);
-        Ok(view)
-    })
-    .await
+    blocking(&core, move |c| c.update_site(&id, &input)).await
 }
 
 #[tauri::command]
 pub async fn site_set_enabled(core: CoreState<'_>, id: String, enabled: bool) -> AppResult<SiteView> {
-    blocking(&core, move |c| {
-        if !enabled {
-            c.app_processes.stop(&id)?;
-        }
-        let view = c.sites.set_enabled(&id, enabled)?;
-        c.sync_app_process(&id, false);
-        Ok(view)
-    })
-    .await
+    blocking(&core, move |c| c.set_site_enabled(&id, enabled)).await
 }
 
 #[tauri::command]
@@ -361,14 +341,7 @@ pub async fn site_duplicate(core: CoreState<'_>, id: String) -> AppResult<SiteVi
 /// Removes the registration and its server configuration; never project files.
 #[tauri::command]
 pub async fn site_delete(core: CoreState<'_>, id: String) -> AppResult<()> {
-    blocking(&core, move |c| {
-        c.app_processes.stop(&id)?;
-        c.tailnet_close(&id)?;
-        c.sites.delete(&id)?;
-        c.thumbnails.remove(&id);
-        Ok(())
-    })
-    .await
+    blocking(&core, move |c| c.delete_site(&id)).await
 }
 
 #[tauri::command]
@@ -422,12 +395,7 @@ pub async fn docker_engine_start(core: CoreState<'_>) -> AppResult<bool> {
 /// Adds an app served from a container (a reverse proxy to its published port).
 #[tauri::command]
 pub async fn docker_app_create(core: CoreState<'_>, input: SiteInput, binding: DockerBinding) -> AppResult<SiteView> {
-    blocking(&core, move |c| {
-        let view = c.create_docker_app(&input, &binding)?;
-        c.sync_app_process(&view.site.id, false);
-        Ok(view)
-    })
-    .await
+    blocking(&core, move |c| c.create_docker_site(&input, &binding)).await
 }
 
 #[tauri::command]

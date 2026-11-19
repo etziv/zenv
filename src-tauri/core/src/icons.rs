@@ -5,6 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::config_generator::managed_files::atomic_write;
 use crate::error::AppResult;
 use crate::paths::AppPaths;
 use crate::platform;
@@ -130,17 +131,16 @@ pub fn installation_icon(paths: &AppPaths, install: &Installation) -> Option<Str
             return data_url(&cached);
         }
     }
-    let _ = std::fs::create_dir_all(&dir);
     if let Some(rgba) = platform::exe_icon_rgba(&install.executable_path, SIZE) {
         let file = dir.join(format!("{}.png", install.id));
-        if std::fs::write(&file, png_rgba(SIZE, SIZE, &rgba)).is_ok() {
+        if atomic_write(&file, &png_rgba(SIZE, SIZE, &rgba)).is_ok() {
             return data_url(&file);
         }
     }
     let image = shipped_images(install.component, &install.root_path).into_iter().next()?;
     let ext = if mime(&image) == "image/svg+xml" { "svg" } else { "png" };
     let file = dir.join(format!("{}.{ext}", install.id));
-    std::fs::copy(&image, &file).ok()?;
+    atomic_write(&file, &std::fs::read(&image).ok()?).ok()?;
     data_url(&file)
 }
 
@@ -150,8 +150,7 @@ pub fn program_icon(paths: &AppPaths, key: &str, exe: &Path) -> Option<String> {
     let cached = dir.join(format!("{key}.png"));
     if !cached.is_file() {
         let rgba = platform::exe_icon_rgba(exe, SIZE)?;
-        let _ = std::fs::create_dir_all(&dir);
-        std::fs::write(&cached, png_rgba(SIZE, SIZE, &rgba)).ok()?;
+        atomic_write(&cached, &png_rgba(SIZE, SIZE, &rgba)).ok()?;
     }
     data_url(&cached)
 }

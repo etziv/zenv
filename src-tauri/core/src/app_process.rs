@@ -30,7 +30,8 @@ use serde::Serialize;
 
 use crate::app_core::Core;
 use crate::error::{AppError, AppResult};
-use crate::local_sites::{Site, Strategy};
+use crate::docker_apps::DockerBinding;
+use crate::local_sites::{Site, SiteInput, SiteView, Strategy};
 use crate::paths::AppPaths;
 use crate::process_manager::{ProcessManager, ProcessSpec, ProcessState};
 use crate::runtime_catalog::{self, Category};
@@ -639,6 +640,45 @@ impl Core {
         }
     }
 
+    // ---------- app lifecycle (one copy for every shell)
+
+    pub fn create_site(&self, input: &SiteInput) -> AppResult<SiteView> {
+        let view = self.sites.create(input)?;
+        self.sync_app_process(&view.site.id, false);
+        Ok(view)
+    }
+
+    pub fn create_docker_site(&self, input: &SiteInput, binding: &DockerBinding) -> AppResult<SiteView> {
+        let view = self.create_docker_app(input, binding)?;
+        self.sync_app_process(&view.site.id, false);
+        Ok(view)
+    }
+
+    pub fn update_site(&self, id: &str, input: &SiteInput) -> AppResult<SiteView> {
+        let before = self.sites.get(id)?;
+        let view = self.sites.update(id, input)?;
+        let moved = before.upstream_port != view.site.upstream_port || before.project_root != view.site.project_root;
+        self.sync_app_process(id, moved);
+        Ok(view)
+    }
+
+    pub fn set_site_enabled(&self, id: &str, enabled: bool) -> AppResult<SiteView> {
+        if !enabled {
+            self.app_processes.stop(id)?;
+        }
+        let view = self.sites.set_enabled(id, enabled)?;
+        self.sync_app_process(id, false);
+        Ok(view)
+    }
+
+    pub fn delete_site(&self, id: &str) -> AppResult<()> {
+        self.app_processes.stop(id)?;
+        self.tailnet_close(id)?;
+        self.sites.delete(id)?;
+        self.thumbnails.remove(id);
+        Ok(())
+    }
+
     /// Starts the programs of the apps a web server serves (after it starts).
     pub fn start_apps_of(&self, service_id: &str) {
         let Ok(sites) = self.autostart_apps(Some(service_id)) else { return };
@@ -750,6 +790,60 @@ mod tests {
         let s = core.app_process_status(&id).unwrap();
         assert_eq!((s.command.as_deref(), s.detected, s.autostart), (Some("npm run dev"), false, true));
         assert_eq!(core.autostart_apps(None).unwrap().len(), 1);
+    }
+
+    fn proxy_input(root: &Path, port: u16) -> crate::local_sites::SiteInput {
+        use crate::local_sites::{PhpEngine, ProjectType};
+        let root = root.display().to_string();
+        crate::local_sites::SiteInput {
+            name: "life".into(),
+            domain: "life.localhost".into(),
+            project_root: root.clone(),
+            document_root: root,
+            project_type: ProjectType::Custom,
+            service_id: None,
+            strategy: Strategy::ReverseProxy,
+            upstream_port: Some(port),
+            runtime_installation_id: None,
+            php_engine: PhpEngine::Auto,
+            https_enabled: false,
+            https_redirect: false,
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn site_lifecycle_through_core() {
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let core = Core::initialize(AppPaths::new(home.path())).unwrap();
+
+        let id = core.create_site(&proxy_input(project.path(), 18_201)).unwrap().site.id;
+        let moved = core.update_site(&id, &proxy_input(project.path(), 18_202)).unwrap();
+        assert_eq!(moved.site.upstream_port, Some(18_202));
+
+        assert!(!core.set_site_enabled(&id, false).unwrap().site.enabled);
+        assert!(core.set_site_enabled(&id, true).unwrap().site.enabled);
+
+        core.delete_site(&id).unwrap();
+        assert!(core.sites.get(&id).is_err());
+        assert!(project.path().is_dir(), "the project folder stays");
+    }
+
+    #[test]
+    fn docker_site_keeps_its_binding_and_a_bad_binding_creates_nothing() {
+        use crate::docker_apps::DockerBinding;
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let core = Core::initialize(AppPaths::new(home.path())).unwrap();
+
+        let binding = DockerBinding { container: "shop_web_1".into(), compose: None, autostart: true };
+        let id = core.create_docker_site(&proxy_input(project.path(), 18_203), &binding).unwrap().site.id;
+        assert_eq!(core.docker_binding(&id).unwrap().map(|b| b.container), Some("shop_web_1".into()));
+
+        let bad = DockerBinding { container: "bad name; rm".into(), compose: None, autostart: true };
+        assert!(core.create_docker_site(&proxy_input(project.path(), 18_204), &bad).is_err());
+        assert_eq!(core.sites.list(&Default::default()).unwrap().total, 1);
     }
 
     #[test]
