@@ -39,7 +39,7 @@ fn a_wide_terminal_never_covers_the_file_tree() {
         })
         .build_ui_state(|ui, s: &mut Studio| s.ui(ui), Studio::new(&egui::Context::default(), core(), site));
     h.run_steps(3);
-    let plus = h.get_by_label("New terminal").rect();
+    let plus = h.get_by_label("New tab").rect();
     let _ = std::fs::remove_dir_all(&root);
     assert!(plus.left() > 520.0, "terminal bar starts at x={} inside the 520 px file tree", plus.left());
 }
@@ -66,7 +66,7 @@ fn create_site(core: &Core) -> String {
 }
 
 fn text(t: &Terminals) -> String {
-    t.tabs.iter().find(|x| x.key == t.active).map(|x| x.term.lock().text()).unwrap_or_default()
+    t.tabs.iter().find(|x| x.key == t.active).and_then(|x| x.term()).map(|x| x.lock().text()).unwrap_or_default()
 }
 
 fn wait(h: &mut Harness<'static, Terminals>, what: &str, done: impl Fn(&Terminals) -> bool) {
@@ -97,7 +97,7 @@ fn a_resize_while_the_program_starts_reaches_the_pty() {
     let phase = h.state().tabs[0].phase();
     h.set_size(egui::vec2(1200.0, 500.0));
     h.step();
-    let cols = h.state().tabs[0].term.lock().size().0;
+    let cols = h.state().tabs[0].term().unwrap().lock().size().0;
     wait(&mut h, "the prompt", |t| t.tabs[0].phase() == Phase::Running && text(t).contains("PS "));
     h.event(egui::Event::Text("cls; echo \"w=$($Host.UI.RawUI.WindowSize.Width)\"".into()));
     h.key_press(Key::Enter);

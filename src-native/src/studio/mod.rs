@@ -1,3 +1,4 @@
+pub mod chat;
 pub mod editor;
 pub mod highlight;
 #[rustfmt::skip]
@@ -103,6 +104,7 @@ pub struct Studio {
     ask: Option<Ask>,
     quit_files: Vec<String>,
     pub closed: bool,
+    placement: (egui::Vec2, Option<egui::Pos2>),
     pub quit: bool,
 }
 
@@ -152,6 +154,7 @@ impl Studio {
             ask: None,
             quit_files: Vec::new(),
             closed: false,
+            placement: (STUDIO_SIZE, None),
             quit: false,
         }
     }
@@ -405,8 +408,12 @@ impl Studio {
             let rect = Rect::from_min_max(egui::pos2(terminal_left, body.top()), body.max);
             let mut term_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
             term_ui.set_clip_rect(rect);
+            self.terminals.active_file = self.editor.active.clone();
             if self.terminals.ui(&mut term_ui, rect, c) {
                 self.show_terminal = false;
+            }
+            for path in std::mem::take(&mut self.terminals.open_files) {
+                self.open_file(&path);
             }
         }
         ui.advance_cursor_after_rect(body);
@@ -455,6 +462,15 @@ pub struct Windows {
     icon: Option<Arc<egui::IconData>>,
 }
 
+const STUDIO_SIZE: egui::Vec2 = vec2(1440.0, 900.0);
+const STUDIO_MIN: egui::Vec2 = vec2(900.0, 560.0);
+const SCREEN_SHARE: egui::Vec2 = vec2(0.9, 0.8);
+
+pub fn placement(monitor: Option<egui::Vec2>, main: Option<Rect>) -> (egui::Vec2, Option<egui::Pos2>) {
+    let size = monitor.map_or(STUDIO_SIZE, |m| STUDIO_SIZE.min(m * SCREEN_SHARE).max(STUDIO_MIN));
+    (size, main.map(|r| (r.center() - size / 2.0).max(egui::Pos2::ZERO.min(r.min))))
+}
+
 fn viewport_id(site_id: &str) -> ViewportId {
     ViewportId::from_hash_of(("studio", site_id))
 }
@@ -469,7 +485,9 @@ impl Windows {
             return s.clone();
         }
         let id = site.id.clone();
-        let studio = Arc::new(Mutex::new(Studio::new(ctx, core.clone(), site)));
+        let mut s = Studio::new(ctx, core.clone(), site);
+        s.placement = placement(ctx.input(|i| i.viewport().monitor_size), ctx.input(|i| i.viewport().outer_rect));
+        let studio = Arc::new(Mutex::new(s));
         self.open.insert(id, studio.clone());
         studio
     }
@@ -520,8 +538,14 @@ impl Windows {
             self.icon = eframe::icon_data::from_png_bytes(crate::ICON_PNG).ok().map(Arc::new);
         }
         for (site_id, studio) in &self.open {
-            let title = studio.lock().unwrap_or_else(|p| p.into_inner()).title();
-            let mut builder = ViewportBuilder::default().with_title(title).with_inner_size([1440.0, 900.0]).with_min_inner_size([900.0, 560.0]);
+            let (title, (size, pos)) = {
+                let s = studio.lock().unwrap_or_else(|p| p.into_inner());
+                (s.title(), s.placement)
+            };
+            let mut builder = ViewportBuilder::default().with_title(title).with_inner_size(size).with_min_inner_size(STUDIO_MIN);
+            if let Some(pos) = pos {
+                builder = builder.with_position(pos);
+            }
             if let Some(icon) = &self.icon {
                 builder = builder.with_icon(icon.clone());
             }

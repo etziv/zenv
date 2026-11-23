@@ -5,6 +5,7 @@ use eframe::egui::{self, pos2, vec2, Align2, Color32, CornerRadius, FontFamily, 
 use zenv_core::app_core::Core;
 use zenv_core::studio::{Agent, AgentInfo, EventSink, TerminalEvent};
 
+use super::chat::{self, Chat};
 use super::terminal::Terminal;
 use super::{panel_icon_button, Colors};
 use crate::widgets::{self, Led};
@@ -27,13 +28,22 @@ struct State {
     closed: bool,
 }
 
-pub struct Tab {
-    pub key: u64,
-    pub name: String,
+pub struct Session {
     pub agent: Agent,
     screen: Option<String>,
     pub term: Terminal,
     state: Arc<Mutex<State>>,
+}
+
+pub enum Body {
+    Term(Session),
+    Chat(Box<Chat>),
+}
+
+pub struct Tab {
+    pub key: u64,
+    pub name: String,
+    pub body: Body,
 }
 
 fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
@@ -42,7 +52,25 @@ fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
 
 impl Tab {
     pub fn phase(&self) -> Phase {
-        lock(&self.state).phase
+        match &self.body {
+            Body::Term(s) => lock(&s.state).phase,
+            Body::Chat(c) if c.state.busy => Phase::Running,
+            Body::Chat(_) => Phase::Idle,
+        }
+    }
+
+    pub fn term(&self) -> Option<&Terminal> {
+        match &self.body {
+            Body::Term(s) => Some(&s.term),
+            Body::Chat(_) => None,
+        }
+    }
+
+    pub fn chat(&mut self) -> Option<&mut Chat> {
+        match &mut self.body {
+            Body::Chat(c) => Some(c),
+            Body::Term(_) => None,
+        }
     }
 }
 
@@ -62,11 +90,13 @@ pub struct Terminals {
     pub agents: Vec<AgentInfo>,
     agents_rx: Option<Receiver<Vec<AgentInfo>>>,
     seeded: bool,
+    pub active_file: Option<String>,
+    pub open_files: Vec<String>,
 }
 
 impl Terminals {
     pub fn new(ctx: &egui::Context, host: Host) -> Self {
-        let mut t = Self { host, tabs: Vec::new(), active: 0, next: 0, agents: Vec::new(), agents_rx: None, seeded: false };
+        let mut t = Self { host, tabs: Vec::new(), active: 0, next: 0, agents: Vec::new(), agents_rx: None, seeded: false, active_file: None, open_files: Vec::new() };
         t.refresh_agents(ctx);
         t
     }
@@ -85,16 +115,33 @@ impl Terminals {
         self.agents_rx = Some(rx);
     }
 
-    fn poll_agents(&mut self) {
+    fn installed(&self, a: Agent) -> bool {
+        self.agents.iter().any(|x| x.id == a && x.program.is_some())
+    }
+
+    fn poll_agents(&mut self, ctx: &egui::Context) {
         let Some(Ok(agents)) = self.agents_rx.as_ref().map(Receiver::try_recv) else { return };
         self.agents = agents;
         self.agents_rx = None;
         if !std::mem::replace(&mut self.seeded, true) && self.tabs.is_empty() {
-            let installed = |a: Agent| self.agents.iter().find(|x| x.id == a && x.program.is_some()).map(|x| x.id);
-            if let Some(agent) = installed(Agent::ClaudeCode).or(installed(Agent::Shell)) {
-                self.add(agent, None);
+            if self.installed(Agent::ClaudeCode) {
+                self.add_chat(ctx);
+            } else if self.installed(Agent::Shell) {
+                self.add(Agent::Shell, None);
             }
         }
+    }
+
+    fn name_for(&self, base: &str) -> String {
+        let same = self.tabs.iter().filter(|t| t.name == base || t.name.starts_with(&format!("{base} "))).count();
+        if same > 0 { format!("{base} {}", same + 1) } else { base.to_owned() }
+    }
+
+    fn push(&mut self, name: String, body: Body) {
+        let key = self.next;
+        self.next += 1;
+        self.tabs.push(Tab { key, name, body });
+        self.active = key;
     }
 
     pub fn add(&mut self, agent: Agent, screen: Option<String>) {
@@ -102,60 +149,96 @@ impl Terminals {
             Some(s) => format!("Claude {s}"),
             None => agent.name().to_owned(),
         };
-        let same = self.tabs.iter().filter(|t| t.name == base || t.name.starts_with(&format!("{base} "))).count();
-        let name = if same > 0 { format!("{base} {}", same + 1) } else { base };
-        let key = self.next;
-        self.next += 1;
-        let term = Terminal::new(Id::unique(("studio-terminal", &self.host.owner, key)));
-        self.tabs.push(Tab { key, name, agent, screen, term, state: Arc::new(Mutex::new(State { phase: Phase::Idle, id: None, closed: false })) });
-        self.active = key;
+        let name = self.name_for(&base);
+        let term = Terminal::new(Id::unique(("studio-terminal", &self.host.owner, self.next)));
+        let state = Arc::new(Mutex::new(State { phase: Phase::Idle, id: None, closed: false }));
+        self.push(name, Body::Term(Session { agent, screen, term, state }));
+    }
+
+    pub fn add_chat(&mut self, ctx: &egui::Context) {
+        let name = self.name_for("Claude");
+        let h = &self.host;
+        let root = h.core.project_root(&h.site_id).unwrap_or_default();
+        let repaint: Arc<dyn Fn() + Send + Sync> = {
+            let (ctx, vp) = (ctx.clone(), h.viewport);
+            Arc::new(move || ctx.request_repaint_of(vp))
+        };
+        let id = Id::unique(("studio-chat", &h.owner, self.next));
+        let chat = Chat::new(ctx, id, h.core.clone(), h.owner.clone(), h.site_id.clone(), root, repaint);
+        self.push(name, Body::Chat(Box::new(chat)));
     }
 
     pub fn close(&mut self, key: u64) {
         let Some(i) = self.tabs.iter().position(|t| t.key == key) else { return };
         let tab = self.tabs.remove(i);
-        let id = {
-            let mut st = lock(&tab.state);
-            st.closed = true;
-            st.id.take()
-        };
-        tab.term.out.disconnect();
-        if let Some(id) = id {
-            let _ = self.host.core.studio.close(&self.host.owner, &id);
+        match tab.body {
+            Body::Term(s) => {
+                let id = {
+                    let mut st = lock(&s.state);
+                    st.closed = true;
+                    st.id.take()
+                };
+                s.term.out.disconnect();
+                if let Some(id) = id {
+                    let _ = self.host.core.studio.close(&self.host.owner, &id);
+                }
+            }
+            Body::Chat(mut c) => c.close(),
         }
         if key == self.active {
-            if let Some(last) = self.tabs.last_mut() {
+            if let Some(last) = self.tabs.last() {
                 self.active = last.key;
-                last.term.focus = true;
+                self.focus();
             }
         }
     }
 
     pub fn has_focus(&self, ctx: &egui::Context) -> bool {
-        self.tabs.iter().any(|t| t.term.has_focus(ctx))
+        self.tabs.iter().any(|t| match &t.body {
+            Body::Term(s) => s.term.has_focus(ctx),
+            Body::Chat(c) => t.key == self.active && c.composer.focused,
+        })
     }
 
     pub fn focus(&mut self) {
         let active = self.active;
-        if let Some(t) = self.tabs.iter_mut().find(|t| t.key == active) {
-            t.term.focus = true;
+        match self.tabs.iter_mut().find(|t| t.key == active).map(|t| &mut t.body) {
+            Some(Body::Term(s)) => s.term.focus = true,
+            Some(Body::Chat(c)) => c.focus = true,
+            None => {}
         }
     }
 
     pub fn ui(&mut self, ui: &mut Ui, rect: Rect, c: &Colors) -> bool {
-        self.poll_agents();
+        self.poll_agents(ui.ctx());
         let bar = Rect::from_min_size(rect.min, vec2(rect.width(), BAR_HEIGHT));
         let hide = self.bar(ui, bar, c);
         ui.painter().rect_filled(Rect::from_min_size(pos2(rect.left(), bar.bottom()), vec2(rect.width(), 1.0)), 0.0, c.line);
         let body = Rect::from_min_max(pos2(rect.left(), bar.bottom() + 1.0), rect.max);
         let active = self.active;
+        let mut screens = Vec::new();
         match self.tabs.iter_mut().find(|t| t.key == active) {
             Some(tab) => {
                 let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body));
                 child.set_clip_rect(body);
-                session_ui(&mut child, body, tab, &self.host);
+                let name = tab.name.clone();
+                match &mut tab.body {
+                    Body::Term(s) => session_ui(&mut child, body, s, &name, &self.host),
+                    Body::Chat(chat) => {
+                        chat.ui(&mut child, body, c, self.active_file.as_deref());
+                        for r in chat.requests.drain(..) {
+                            match r {
+                                chat::Request::OpenFile(path) => self.open_files.push(path),
+                                chat::Request::Terminal(screen) => screens.push(screen),
+                            }
+                        }
+                    }
+                }
             }
             None => self.empty(ui, body, c),
+        }
+        for screen in screens {
+            self.add(Agent::ClaudeCode, screen);
         }
         hide
     }
@@ -187,13 +270,22 @@ impl Terminals {
             }
         }
         child.add_space(4.0);
-        let plus = panel_icon_button(&mut child, lucide::PLUS, "New terminal", false, 32.0, 16.0);
+        let plus = panel_icon_button(&mut child, lucide::PLUS, "New tab", false, 32.0, 16.0);
         if plus.clicked() {
             self.refresh_agents(ui.ctx());
         }
         let mut add = None;
+        let mut add_chat = false;
         egui::Popup::menu(&plus).width(MENU_WIDTH).align(egui::RectAlign::BOTTOM_START).show(|ui| {
             ui.set_max_width(MENU_WIDTH);
+            let claude = self.agents.iter().find(|a| a.id == Agent::ClaudeCode);
+            let hint = claude.map_or_else(String::new, |a| a.program.as_ref().map_or_else(|| format!("Not installed. {}", a.install_hint), |p| p.display().to_string()));
+            let r = ui.add_enabled_ui(self.installed(Agent::ClaudeCode), |ui| widgets::menu_item(ui, lucide::BOT, "Claude Code chat", true, false));
+            add_chat = r.inner;
+            if !hint.is_empty() {
+                r.response.on_hover_text(hint);
+            }
+            ui.separator();
             ui.label(RichText::new("Terminal").size(11.0).color(theme::palette(ui).muted));
             for a in &self.agents {
                 let hint = match &a.program {
@@ -208,6 +300,9 @@ impl Terminals {
                 r.response.on_hover_text(hint);
             }
         });
+        if add_chat {
+            self.add_chat(ui.ctx());
+        }
         if let Some(agent) = add {
             self.add(agent, None);
         }
@@ -229,6 +324,7 @@ impl Terminals {
             self.close(k);
         }
         self.host.core.studio.close_owned_by(&self.host.owner);
+        self.host.core.chats.close_owned_by(&self.host.owner);
     }
 }
 
@@ -264,15 +360,15 @@ fn tab_button(ui: &mut Ui, t: &Tab, active: bool, running: bool, c: &Colors) -> 
     (r.clicked() && !x.clicked(), x.clicked() || r.clicked_by(egui::PointerButton::Middle))
 }
 
-fn session_ui(ui: &mut Ui, body: Rect, tab: &mut Tab, host: &Host) {
-    if tab.phase() == Phase::Idle {
-        let (cols, rows) = tab.term.fit(ui, body);
-        tab.term.lock().resize(cols, rows);
-        start(tab, host, (cols, rows), ui.ctx());
+fn session_ui(ui: &mut Ui, body: Rect, s: &mut Session, name: &str, host: &Host) {
+    if lock(&s.state).phase == Phase::Idle {
+        let (cols, rows) = s.term.fit(ui, body);
+        s.term.lock().resize(cols, rows);
+        start(s, name, host, (cols, rows), ui.ctx());
     }
-    let frame = tab.term.ui(ui, body);
+    let frame = s.term.ui(ui, body);
     let (phase, id) = {
-        let st = lock(&tab.state);
+        let st = lock(&s.state);
         (st.phase, st.id.clone())
     };
     if let (Some((cols, rows)), Phase::Running, Some(id)) = (frame.resized, phase, &id) {
@@ -283,19 +379,19 @@ fn session_ui(ui: &mut Ui, body: Rect, tab: &mut Tab, host: &Host) {
     }
     match phase {
         Phase::Ended if frame.input.contains(&b'\r') => {
-            tab.term.lock().reset();
-            let size = tab.term.lock().size();
-            start(tab, host, size, ui.ctx());
+            s.term.lock().reset();
+            let size = s.term.lock().size();
+            start(s, name, host, size, ui.ctx());
         }
         Phase::Ended | Phase::Idle => {}
-        Phase::Starting | Phase::Running => tab.term.out.send(&frame.input),
+        Phase::Starting | Phase::Running => s.term.out.send(&frame.input),
     }
 }
 
-fn start(tab: &mut Tab, host: &Host, size: (u16, u16), ctx: &egui::Context) {
-    lock(&tab.state).phase = Phase::Starting;
-    let (screen, out, state, host, ctx) = (tab.term.screen.clone(), tab.term.out.clone(), tab.state.clone(), host.clone(), ctx.clone());
-    let (agent, first, name) = (tab.agent, tab.screen.take(), tab.name.clone());
+fn start(s: &mut Session, name: &str, host: &Host, size: (u16, u16), ctx: &egui::Context) {
+    lock(&s.state).phase = Phase::Starting;
+    let (screen, out, state, host, ctx) = (s.term.screen.clone(), s.term.out.clone(), s.state.clone(), host.clone(), ctx.clone());
+    let (agent, first, name) = (s.agent, s.screen.take(), name.to_owned());
     std::thread::spawn(move || {
         let repaint = {
             let (ctx, vp) = (ctx.clone(), host.viewport);
