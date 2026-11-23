@@ -63,6 +63,19 @@ Rules: paths never leave the project root (`project_files::parts`); native colou
 History:
 - 2026-11-23 task 15: native Studio window, tree, editor, Go to file (M20 step 8a)
 
+## F-008 Studio terminal: run Claude Code, Codex or PowerShell in the app's folder
+Trigger: the terminal panel of a Studio window (first tab on open; `+` menu; Ctrl+` / the PanelRight button shows or hides it).
+1. Agents: `Core.studio_agents` (React `TerminalPanel`, native `Terminals.refresh_agents`) resolves each program on the app's PATH (`studio::resolve`).
+2. Open: `Core.studio_open_terminal` checks the agent and screen, builds the env (`studio_env`) and starts it in a ConPTY (`Terminals::open`, max 16) in the project root; Claude Code gets `--append-system-prompt` with `studio_context`.
+3. Output: the reader thread hands bytes to the window's sink: React writes them into xterm.js; native feeds `Screen` (alacritty_terminal grid + vte parser) and repaints.
+4. Input: typed keys (`terminal::keys::encode`), paste (bracketed when asked), mouse reports go to `Terminals::write`; native answers the program's queries (ConPTY's cursor query, colours, size) from the reader thread through `Outbox`, queued until the session id is known.
+5. Resize: the widget fits columns and rows to its rect (`grid_size`) and calls `Terminals::resize`.
+6. Exit: the program's end shows "[name ended (exit code N). Press Enter to start it again.]"; Enter starts it again on a clean screen.
+7. Close: a tab's close ends its program (`Terminals::close`); closing the window ends all of the window's (`close_owned_by`); quitting Zenv ends every one (`close_all`).
+Rules: only known programs run, always in the project root; a terminal belongs to the window that opened it (owner check on every call).
+History:
+- 2026-11-23 task 16: native terminal panel and widget (M20 step 8b)
+
 ## F-005 Load a saved Claude Code session
 Trigger: History in the chat header.
 1. `chat_sessions` -> `sessions`: lists `<id>.jsonl` in Claude Code's folder for the project (`sessions_dir`), titles via `studio_history::title_of` (last 64 KB).

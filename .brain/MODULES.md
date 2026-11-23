@@ -60,3 +60,5 @@ Risk gates (at the spike unless named): builds and opens on `x86_64-pc-windows-g
 step 8 terminal runs `claude`, vim, truecolor, resize, paste (else open Windows Terminal); editor typing <= 16 ms/frame on a 1 MB file
 (else large files open in VS Code). Gate 8a result (2026-11-23, task 15): coloured 1 MB failed (~13 ms per 100 KB);
 colours only up to 100 KB with lines <= 2 KB (minified files: 115 ms per key at 20 KB), plain up to 1 MB (14.8 ms median), read-only above 1 MB or a 40 KB line ([G-017](DECISIONS.md)); Studio with a 1 MB file open: 128 MB private.
+Gate 8b result (2026-11-23, task 16): passed in the real window: Claude Code (colours, keys, Esc, mouse), vim, truecolor, resize, paste;
+full 203x62 screen 0.6-0.9 ms per frame (release median); terminals end with their window. Own widget on `alacritty_terminal` 0.26 (F-008).

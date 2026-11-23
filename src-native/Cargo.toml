@@ -20,6 +20,7 @@ rfd = "0.18"
 syntect = { version = "5.3", default-features = false, features = ["default-syntaxes", "regex-fancy"] }
 tracing = "0.1"
 tray-icon = { version = "0.25.1", default-features = false }
+alacritty_terminal = "0.26"
 
 [dev-dependencies]
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
