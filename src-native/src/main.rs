@@ -10,6 +10,7 @@ use zenv_core::platform;
 use zenv_native::app::ZenvApp;
 
 const IDENTIFIER: &str = "dev.zenv.desktop";
+const ICON_PNG: &[u8] = include_bytes!("../../src-tauri/icons/128x128.png");
 
 fn main() {
     if let Err(e) = run() {
@@ -28,6 +29,14 @@ fn run() -> Result<(), String> {
         tracing::error!(%info, "native UI panicked");
         default_hook(info);
     }));
+    let instance = match platform::single_instance(&zenv_native::os::instance_name(&paths.root)) {
+        Ok(Some(instance)) => Some(instance),
+        Ok(None) => return Ok(()),
+        Err(e) => {
+            tracing::warn!(error = %e, "single-instance check failed; starting anyway");
+            None
+        }
+    };
     if let Err(e) = paths::adopt_legacy_database(&app_local, &paths) {
         tracing::warn!(error = %e, "could not copy earlier metadata into the Zenv home");
     }
@@ -41,9 +50,10 @@ fn run() -> Result<(), String> {
         viewport: egui::ViewportBuilder::default()
             .with_title("Zenv")
             .with_inner_size([1280.0, 820.0])
-            .with_min_inner_size([960.0, 600.0]),
+            .with_min_inner_size([960.0, 600.0])
+            .with_icon(eframe::icon_data::from_png_bytes(ICON_PNG).map_err(|e| e.to_string())?),
         ..Default::default()
     };
-    eframe::run_native("Zenv", options, Box::new(move |cc| Ok(Box::new(ZenvApp::new(cc, core)))))
+    eframe::run_native("Zenv", options, Box::new(move |cc| Ok(Box::new(ZenvApp::new(cc, core, instance)))))
         .map_err(|e| e.to_string())
 }

@@ -13,3 +13,9 @@ pub fn reveal(path: &std::path::Path, select: bool) -> zenv_core::error::AppResu
     }
     cmd.spawn().map(|_| ()).map_err(|e| AppError::Platform(format!("cannot open {}: {e}", path.display())))
 }
+
+pub fn instance_name(root: &std::path::Path) -> String {
+    let path = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    let text = path.display().to_string().to_lowercase().replace('\\', "/");
+    format!("Local\\zenv-native-{}", text.trim_start_matches("//?/").trim_end_matches('/'))
+}

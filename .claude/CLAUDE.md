@@ -30,6 +30,12 @@ The session-start brief already shows the stage, the open task's plan and next s
 - Check current official docs before relying on a tool option or library version; never guess.
 - Subagents reply in max 150 words: done, files changed, evidence, open questions.
 
+## External tools through codemode-gateway (when `.mcp.json` lists it)
+- `search` first, then ONE `execute` script that chains every step (loops, filters, aggregation); process raw data inside the script and return only the final result.
+- `emit.image` only when you must see it (UI verification). UI exploration or debugging: the passthrough tools (`server__tool`); a known E2E scenario: `execute`.
+- A failing script: fix the script and run it again, never split it into many single calls.
+- `input_required` or a confirmation from the gateway: ask the boss, never guess, then `respond`.
+
 ## Project-specific notes (the boss fills these in)
 - Project name and one-line purpose:
 - Platform (web / android / other):

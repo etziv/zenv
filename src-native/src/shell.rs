@@ -151,7 +151,7 @@ pub fn rail(ui: &mut Ui, services: Option<&[ServiceStatus]>, out: &mut Vec<Actio
     });
 }
 
-fn trace(ui: &Ui, rect: Rect) {
+pub fn trace(ui: &Ui, rect: Rect) {
     let lit = panel::LED.gamma_multiply(0.45);
     let clear = Color32::TRANSPARENT;
     let mut mesh = egui::Mesh::default();

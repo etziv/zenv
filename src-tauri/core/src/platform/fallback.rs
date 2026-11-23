@@ -48,6 +48,26 @@ pub fn open_console(_cwd: &std::path::Path, _env: &[(std::ffi::OsString, std::ff
 
 pub fn style_popup(_hwnd: isize, _border_rgb: u32) {}
 
+pub struct InstanceEvent;
+
+impl InstanceEvent {
+    pub fn wait(&self) -> bool {
+        false
+    }
+}
+
+pub fn single_instance(_name: &str) -> AppResult<Option<InstanceEvent>> {
+    Ok(Some(InstanceEvent))
+}
+
+pub fn work_area(_x: i32, _y: i32) -> Option<[i32; 4]> {
+    None
+}
+
+pub fn find_window(_title: &str) -> Option<isize> {
+    None
+}
+
 pub fn authenticode_signer(_path: &std::path::Path) -> AppResult<Option<String>> {
     Ok(None)
 }

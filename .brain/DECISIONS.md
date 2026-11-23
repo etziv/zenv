@@ -59,14 +59,6 @@ Decision: only the SVGs mapped in `fileIcons.ts` are copied to `public/file-icon
 Decision: an app may be a Service (`https://<svc>.<tailnet>.ts.net`, migration 0014); the port mode stays. Needs a tagged host, HTTPS
 certificates and the Service defined in the admin console. Source: the boss, 2026-11-09 ("coba tailscale service tambahkan").
 
-## D-016 Private GitHub repo etziv/zenv, release mode merge, version 1.0.0 [superseded by D-019] 2026-11-09
-Decision: code lives in private `etziv/zenv`; every ship pushes, opens a PR and squash-merges into `main`; the app is version 1.0.0.
-Source: the boss, 2026-11-09 ("buat dan versi sekarang adalah versi 1"); task 6.
-
-## D-017 Self-update with an encrypted read-only token [superseded by D-018] 2026-11-09
-Decision: Zenv updates itself from a private GitHub source using a read-only token stored encrypted in the app (not yet built; design
-in a PROPOSAL card). Source: the boss, 2026-11-09 ("gunakan token read untuk update tpi tokennya dienkripsi").
-
 ## D-018 No self-update for now [active] 2026-11-09
 Decision: Zenv has no self-update; builds are installed by hand (D-009). Options weighed for later: token in the exe (only obscured),
 DPAPI token pasted once, a public releases repo. Source: the boss, 2026-11-09 ("self update tidak perlu dulu deh, pikir nanti").
@@ -106,11 +98,16 @@ G-004 2026-11-06 Do not close the boss's running Zenv to install a build: check 
 G-005 2026-11-09 Do not filter Claude transcript entries by type before walking `parentUuid`: `attachment` entries are links in the chain (`transcript_lines`).
 G-006 2026-11-06 Do not run Vitest while a cargo build runs (also right after a Cargo.toml edit, likely rust-analyzer's rebuild): workers time out ("Timeout waiting for worker"); rerun once it settles.
 G-007 2026-11-06 The windows-gnu link prints `.rsrc merge failure: multiple non-default manifests`; the app still builds and runs.
-G-011 2026-11-09 Do not debug rustc "crate `X` required in rlib format", "can't find crate" or "only metadata stub found for `std`" as code: rerun with `-j 2` (task 13: full parallelism failed 3 times in a row, `-j 2` passed every time; cause unproven, likely antivirus file locks).
+G-011 2026-11-19 Do not debug rustc "crate `X` required in rlib format", "can't find crate", "invalid metadata files" or "only metadata stub found for `std`" as code: the cause is Windows commit memory running out ("failed to mmap ... paging file is too small (os error 1455)", shown in full output; task 14: 2.9 GB commit free with Chrome, WSL, llama-server and mysqld running). Build with `-j 1`, which passed; `-j 2` also failed then.
 G-012 2026-11-16 Do not debug Codex "router unreachable" as a network bug first: OmniRoute and 9router both default to port 20128, so Codex set to the other router gets `401 Invalid API key` (proven with curl on `/v1/responses`); check which router owns 20128 and `model_provider` in `~/.codex/config.toml`.
-G-013 2026-11-18 Do not leave `task.mjs init-repo` [setup] commits on local `main` before a merge-mode ship: the PR squashes them, the ship's `pull --ff-only` then fails silently and local `main` misses the task (task 12; fixed with `git merge origin/main`, boss "sync").
+G-013 2026-11-18 Do not leave `task.mjs init-repo` [setup] commits on local `main` before a merge-mode ship: the PR squashes them, the ship's `pull --ff-only` then fails silently and local `main` misses the task (task 12; fixed with `git merge origin/main`, boss "sync"); happened again after task 13: same fix at the start of task 14).
 G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a shell: they outlive the session and Zenv's own Start fails "port in use" (STATUS open issue 2026-11-09: mysqld 9.7 on 3306).
 G-014 2026-11-18 Do not use eframe's wgpu renderer for the native UI: it idled at 441-462 MB private on this PC, glow at 57 MB (task 13).
 G-015 2026-11-18 Do not screenshot a native window with CopyFromScreen after SetForegroundWindow: Windows refuses the focus and you capture another app; use PrintWindow(hwnd, dc, 2) (task 13).
+G-016 2026-11-19 Do not open an egui `show_viewport_immediate` window while the eframe root window is hidden: eframe 0.37 paints hidden windows from `new_events` without an event loop, the window is never created and egui panics "the user callback was never called", killing Zenv (task 14, `C:\zenv-dev\logs\zenv.log`). The tray panel uses `show_viewport_deferred` with shared state instead.
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).
+
+## Archived decisions ([archive](archive/DECISIONS.md))
+- D-016 Private GitHub repo etziv/zenv, release mode merge, version 1.0.0 (superseded)
+- D-017 Self-update with an encrypted read-only token (superseded)
