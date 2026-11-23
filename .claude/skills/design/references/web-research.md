@@ -82,7 +82,8 @@ The key screens are built in FigCraft, always (boss 2026-11-03), so the boss can
 FigCraft app: research pack -> build plan -> `figcraft-build`'s `scripts/figlive.mjs <plan> --live` (section 2b),
 which runs its own FigCraft engine, so a down `figcraft` MCP is no reason to draw in HTML.
 
-FigCraft (headless MCP server; it may read the project and write only inside `.brain/design/`). How to drive it
+FigCraft (the boss's FigCraft window, never headless: he must see the design; it may read the project and write
+only inside `.brain/design/`). How to drive it
 (batch, auto layout, variables, components, verify loop, gotchas) is the `figcraft-design` skill; this section
 decides what to build and where it goes:
 - One document; one page per direction, named `Direction <n>: <name>`; one frame per key screen at real size,
@@ -94,21 +95,27 @@ decides what to build and where it goes:
   `list_commands` once only when you need a command id for `run_command`; `inspect_document` or `get_node` only for
   what you are checking.
 - `screenshot` each frame once and fix what renders wrong (clipped text, wrong colour, broken auto layout).
+- Each direction's interactive components as component sets with `State=` variants, and its prototype
+  interactions and screen transitions in its motion tokens (`figcraft-build` section 7).
 - `save_file` to `.brain/design/proposal/proposal.figcraft`; `export` every frame as PNG at scale 1 to
   `.brain/design/proposal/screens/<n>-<screen>.png`.
 
-Then one HTML file, `.brain/design/proposal/proposal.html`: inline CSS, fonts from Google Fonts, no external
-scripts; the key screens are the exported PNGs by relative path (`screens/...`). Reference thumbnails only as your own small screenshots inlined as JPEG data URIs
+Then one HTML file, `.brain/design/proposal/proposal.html`: inline CSS and inline script, fonts from Google Fonts,
+no external scripts (a GSAP preset a direction uses: a pinned CDN URL with `integrity`); the key screens are the
+exported PNGs by relative path (`screens/...`). Reference thumbnails only as your own small screenshots inlined as JPEG data URIs
 (at most 6, about 150 KB each), each with its source link. Sections: the brief in two lines -> the research in
 five bullets -> each direction (palette swatches light and dark with their contrast results, type specimen, the
 key screens in light and dark side by side,
-components, motion, references) -> a comparison table (feel, fit to the users, build cost, risk) -> your
+components, the live Motion panel of `references/app-motion.md` section 9 with its table, references) -> a
+comparison table (feel, fit to the users, build cost, risk) -> your
 recommendation and why. Write it in Indonesian for the boss; colour names and code stay as they are.
 
 Also write `.brain/design/proposal/directions.md`: per direction, a `## Direction <n>: <name>` heading with the palette
-roles and hex for light and dark, type, spacing/radius, components and screen notes, so the main dev writes DESIGN.md from the
+roles and hex for light and dark, type, spacing/radius, components and screen notes, and its `### Motion &
+Interaction` (tokens + table, `app-motion.md` section 8), so the main dev writes DESIGN.md from the
 chosen section without reading the HTML.
 
-Hand over the paths: `proposal.figcraft` opens in the FigCraft app, `proposal.html` in any browser. Never publish
+Hand over the paths: `proposal.figcraft` is open in the boss's FigCraft window (figlive shows it there; confirm it),
+`proposal.html` opens in any browser. Never publish
 an artifact: the boss works with two Claude accounts and an artifact belongs to only one of them. Look at the
 rendered page once (`inspect.mjs` or the `playwright` MCP) and fix what renders wrong before handing it over.

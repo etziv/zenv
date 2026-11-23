@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, OpenUrl, RichText};
+use eframe::egui::{self, OpenUrl, RichText, ViewportBuilder, ViewportCommand, ViewportId};
 use zenv_core::app_core::Core;
+use zenv_core::platform::{self, InstanceEvent};
 use zenv_core::runtime_installer::{InstallJob, Phase};
 use zenv_core::service_manager::{Health, ServiceStatus};
 
 use crate::loader::{Note, Tasks, Tone};
 use crate::pages::{Action, Cx, Pages, Route, Shared};
+use crate::panel::{self, Out};
 use crate::theme::{self, palette};
+use crate::tray::{self, Msg};
 use crate::{shell, widgets};
 
 const ROUTE_KEY: &str = "zenv.route";
@@ -27,6 +30,33 @@ pub struct ZenvApp {
     notes: (Sender<Note>, Receiver<Note>),
     seen_jobs: Option<HashMap<String, Phase>>,
     shown_route: Option<Route>,
+    tray: Option<tray_icon::TrayIcon>,
+    msgs: (Sender<Msg>, Receiver<Msg>),
+    panel: Option<PanelState>,
+    panel_closed_at: Option<Instant>,
+    quitting: bool,
+}
+
+struct PanelState {
+    icon: egui::Rect,
+    height: f32,
+    scale: f32,
+    styled: bool,
+    feed: Arc<Mutex<Feed>>,
+}
+
+#[derive(Default)]
+struct Feed {
+    services: Option<Vec<ServiceStatus>>,
+    version: &'static str,
+    busy: Vec<String>,
+    error: Option<(String, String)>,
+    outs: Vec<Out>,
+    height: f32,
+    scale: f32,
+    was_focused: bool,
+    blurred: bool,
+    escape: bool,
 }
 
 pub struct Toast {
@@ -75,8 +105,25 @@ pub fn install_notes(seen: &mut Option<HashMap<String, Phase>>, jobs: &[InstallJ
 }
 
 impl ZenvApp {
-    pub fn new(cc: &eframe::CreationContext, core: Arc<Core>) -> Self {
+    pub fn new(cc: &eframe::CreationContext, core: Arc<Core>, instance: Option<InstanceEvent>) -> Self {
         theme::install(&cc.egui_ctx);
+        let msgs = channel();
+        let tray = tray::install(&cc.egui_ctx, msgs.0.clone(), &tray::tooltip(&core.services.statuses().unwrap_or_default()))
+            .inspect_err(|e| tracing::warn!(error = %e, "no tray icon: closing the window quits Zenv"))
+            .ok();
+        watch_tooltip(&cc.egui_ctx, &core, msgs.0.clone());
+        if let Some(instance) = instance {
+            let (ctx, tx) = (cc.egui_ctx.clone(), msgs.0.clone());
+            std::thread::Builder::new()
+                .name("second-launch".into())
+                .spawn(move || {
+                    while instance.wait() {
+                        let _ = tx.send(Msg::ShowMain);
+                        ctx.request_repaint();
+                    }
+                })
+                .ok();
+        }
         let route = cc
             .storage
             .and_then(|s| s.get_string(ROUTE_KEY))
@@ -95,7 +142,120 @@ impl ZenvApp {
             notes: channel(),
             seen_jobs: None,
             shown_route: None,
+            tray,
+            msgs,
+            panel: None,
+            panel_closed_at: None,
+            quitting: false,
         }
+    }
+
+    fn show_main(&mut self, ctx: &egui::Context) {
+        self.close_panel();
+        ctx.send_viewport_cmd(ViewportCommand::Visible(true));
+        ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+        ctx.send_viewport_cmd(ViewportCommand::Focus);
+    }
+
+    fn quit(&mut self, ctx: &egui::Context) {
+        self.quitting = true;
+        self.panel = None;
+        ctx.send_viewport_cmd(ViewportCommand::Close);
+    }
+
+    fn close_panel(&mut self) {
+        if self.panel.take().is_some() {
+            self.panel_closed_at = Some(Instant::now());
+        }
+    }
+
+    fn toggle_panel(&mut self, ctx: &egui::Context, icon: egui::Rect) {
+        if self.panel.is_some() {
+            self.close_panel();
+            return;
+        }
+        if self.panel_closed_at.is_some_and(|t| t.elapsed() < Duration::from_millis(300)) {
+            return;
+        }
+        let scale = ctx.native_pixels_per_point().unwrap_or(1.0) * ctx.zoom_factor();
+        self.panel = Some(PanelState { icon, height: 320.0, scale, styled: false, feed: Arc::default() });
+        ctx.send_viewport_cmd(ViewportCommand::RequestPaintWhileHidden);
+        ctx.request_repaint();
+    }
+
+    fn panel(&mut self, ctx: &egui::Context) {
+        let Some(state) = &mut self.panel else { return };
+        let (outs, close) = {
+            let mut feed = state.feed.lock().unwrap_or_else(|p| p.into_inner());
+            feed.services = self.shared.services.ok().cloned();
+            feed.version = self.version;
+            feed.busy = self.tasks.busy_keys();
+            feed.error = self.toasts.iter().rev().find(|t| t.tone == Tone::Error).map(|t| (t.title.clone(), t.description.clone()));
+            if feed.height > 0.0 {
+                state.height = feed.height.clamp(panel::HEIGHT.0, panel::HEIGHT.1).ceil();
+                state.scale = feed.scale;
+            }
+            let close = std::mem::take(&mut feed.blurred) || std::mem::take(&mut feed.escape);
+            (std::mem::take(&mut feed.outs), close)
+        };
+        if !state.styled {
+            if let Some(hwnd) = platform::find_window(panel::TITLE) {
+                platform::style_popup(hwnd, 0x2b2f32);
+                state.styled = true;
+            }
+        }
+        for out in outs {
+            match out {
+                Out::Act(action) => self.apply(ctx, vec![action]),
+                Out::OpenMain => self.show_main(ctx),
+                Out::Quit => self.quit(ctx),
+                Out::Dismiss => {
+                    if let Some(i) = self.toasts.iter().rposition(|t| t.tone == Tone::Error) {
+                        self.toasts.remove(i);
+                    }
+                }
+            }
+        }
+        if close {
+            self.close_panel();
+        }
+        let Some(state) = &self.panel else { return };
+        let size = egui::vec2(panel::WIDTH, state.height) * state.scale;
+        let c = state.icon.center();
+        let work = platform::work_area(c.x as i32, c.y as i32).map_or(egui::Rect::from_center_size(c, egui::vec2(4096.0, 4096.0)), |[l, t, r, b]| {
+            egui::Rect::from_min_max(egui::pos2(l as f32, t as f32), egui::pos2(r as f32, b as f32))
+        });
+        let pos = tray::place(state.icon, work, size, state.scale);
+        let builder = ViewportBuilder::default()
+            .with_title(panel::TITLE)
+            .with_inner_size([panel::WIDTH, state.height])
+            .with_position(pos / state.scale)
+            .with_decorations(false)
+            .with_resizable(false)
+            .with_always_on_top()
+            .with_taskbar(false)
+            .with_active(true);
+        let (id, feed) = (ViewportId::from_hash_of("tray-panel"), state.feed.clone());
+        ctx.request_repaint_of(id);
+        ctx.show_viewport_deferred(id, builder, move |ui, _| {
+            let mut f = feed.lock().unwrap_or_else(|p| p.into_inner());
+            let (outs, height) = {
+                let error = f.error.as_ref().map(|(t, d)| (t.as_str(), d.as_str()));
+                panel::ui(ui, &panel::View { services: f.services.as_deref(), version: f.version, busy: &f.busy, error })
+            };
+            let (focused, escape) = ui.input(|i| (i.viewport().focused, i.key_pressed(egui::Key::Escape)));
+            f.was_focused |= focused == Some(true);
+            let blurred = f.was_focused && focused == Some(false);
+            let wake = !outs.is_empty() || escape || blurred || (height - f.height).abs() > 0.5;
+            f.outs.extend(outs);
+            f.height = height;
+            f.scale = ui.ctx().pixels_per_point();
+            f.blurred |= blurred;
+            f.escape |= escape;
+            if wake {
+                ui.ctx().request_repaint_of(ViewportId::ROOT);
+            }
+        });
     }
 
     fn apply(&mut self, ctx: &egui::Context, actions: Vec<Action>) {
@@ -197,7 +357,47 @@ fn tone_style(tone: Tone, p: &theme::Palette) -> (&'static str, egui::Color32) {
     }
 }
 
+fn watch_tooltip(ctx: &egui::Context, core: &Arc<Core>, tx: Sender<Msg>) {
+    let (ctx, core) = (ctx.clone(), core.clone());
+    std::thread::Builder::new()
+        .name("tray-tooltip".into())
+        .spawn(move || {
+            let mut last = String::new();
+            loop {
+                std::thread::sleep(Duration::from_secs(3));
+                let text = tray::tooltip(&core.services.statuses().unwrap_or_default());
+                if text != last {
+                    last.clone_from(&text);
+                    if tx.send(Msg::Tooltip(text)).is_err() {
+                        return;
+                    }
+                    ctx.request_repaint();
+                }
+            }
+        })
+        .ok();
+}
+
 impl eframe::App for ZenvApp {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        while let Ok(msg) = self.msgs.1.try_recv() {
+            match msg {
+                Msg::ShowMain => self.show_main(ctx),
+                Msg::Quit => self.quit(ctx),
+                Msg::TogglePanel(icon) => self.toggle_panel(ctx, icon),
+                Msg::Tooltip(text) => {
+                    if let Some(tray) = &self.tray {
+                        let _ = tray.set_tooltip(Some(text));
+                    }
+                }
+            }
+        }
+        if ctx.input(|i| i.viewport().close_requested()) && !self.quitting && self.tray.is_some() {
+            ctx.send_viewport_cmd(ViewportCommand::CancelClose);
+            ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         let mut finished = false;
@@ -254,6 +454,7 @@ impl eframe::App for ZenvApp {
         });
         self.toasts(&ctx);
         self.apply(&ctx, actions);
+        self.panel(&ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

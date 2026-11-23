@@ -19,9 +19,15 @@ in one call (7,000+ layers in seconds), then uses a handful of batched commands 
 bar. A fast build of a generic layout is still generic: the boss rejected exactly that ("terlalu generic dan kaku").
 
 ## 0. Rules
+- **Never headless: the boss SEES every design in his FigCraft window** (boss 2026-11-09, 2026-11-21: "gimana mau
+  lihat"). Before the first drawing call confirm the window: the figcraft `inspect_ui` answers (not an error) and
+  `screenshot {window:true}` shows the app. The wrapper refuses every tool call it cannot send to the window, and
+  figlive opens his window itself and exits 1 `NOT IN THE WINDOW` when it cannot show the saved file. A design that
+  only exists in a headless engine or a PNG is not delivered.
 - **The figcraft MCP is down: never fall back to an HTML mock-up.** Build with `scripts/figlive.mjs` (its own engine,
-  section 2b) or `figcraft-cli`; only work that needs the boss's open app waits: tell him in one line "FigCraft tidak
-  tersambung: /mcp -> figcraft -> Reconnect" (the wrapper reopens the app; still down = FigCraft not installed).
+  section 2b; it still shows the result in the boss's window); only work that needs the boss's open app waits: tell
+  him in one line "FigCraft tidak tersambung: /mcp -> figcraft -> Reconnect" (the wrapper reopens the app; still
+  down = FigCraft not installed).
 - **Plan completely, then execute.** Write the plan (per screen: the question it answers, its signature element,
   composition, components, data) before generating anything; then build in as few import rounds as possible.
 - **Real data only**, labelled if fictional. Fonts only from what FigCraft really has (section 5).
@@ -35,13 +41,16 @@ until then a headless figcraft-cli answers the handshake and the tool list (no w
 `figcraft.exe --control 7777` (`FIGCRAFT_PORT`) with the repo as read root and `.brain/design` as write root
 (detached: the app outlives the session) when nothing listens there, attaches to it (about 3 s) and sends every later
 call to that window; an app already open on the port is attached at session start. Nothing to start by hand.
-The app cannot start -> the wrapper says so on stderr and the tools keep working headless (no window).
+The app cannot start -> every tool call returns an error with the cause and the fix (never a headless answer; the
+tool list still answers): stop drawing, fix what the error names, or tell the boss the one line of section 0; once
+the app listens on the port the next call attaches. The server instructions say "Backend: the FigCraft app window".
 - Attached mode refuses roots on the CLI, so the app on the port keeps the roots it was opened with: an app opened
   by ANOTHER project writes only under that project's `.brain/design`. A save refused for its root -> ask the boss
   to close FigCraft, then `/mcp -> figcraft -> Reconnect`.
 - Installed elsewhere: user env `FIGCRAFT_CLI=<dir>/figcraft-cli.exe` (`figcraft.exe` is taken from the same folder).
-- Probe without the session: pipe an MCP `initialize` JSON line into `node .claude/scripts/figcraft-mcp.mjs`; it
-  prints "attached to the FigCraft app".
+- Probe without the session: pipe `initialize`, `notifications/initialized` and a `tools/call` of `inspect_ui` into
+  `node .claude/scripts/figcraft-mcp.mjs`; stderr prints "attached to the FigCraft app" (a session-start handshake
+  alone stays on the headless list answerer and opens nothing).
 Keep the boss's view on the work: after each import or frame, `page.select` + `view.zoomFit` (or
 `view.zoomSelection`). A dark empty canvas = the view is on an empty area, not a crash.
 
@@ -52,9 +61,9 @@ Keep the boss's view on the work: after each import or frame, `page.select` + `v
    as in FigCraft. Self-test: `python scripts/figrest.py out.json`.
 2. `write_document('proposal.rest.json', name, pages)` (keep the JSON gitignored; the generator is the source).
 3. Live: `run_command file.close {index, force}` for stale tabs, then `open_file proposal.rest.json` (new tab,
-   returns page ids and `warnings`). Headless (a scratch check in `tmp/` only; what the boss is meant to see is opened
-   in his window, as above): `figcraft-cli convert in.json out.figcraft` then
-   `figcraft-cli render --out page.png out.figcraft` and `figcraft-cli info out.figcraft` (lists missing fonts).
+   returns page ids and `warnings`) in the boss's window. A generator self-check without the window (only a scratch
+   file in `tmp/`, never what he reviews): `figcraft-cli convert in.json out.figcraft`, `figcraft-cli render --out
+   page.png out.figcraft`, `figcraft-cli info out.figcraft` (lists missing fonts).
 4. ONE `batch` right after import: vector paths (`vector_batch(page_ids)` gives the commands: `node.find` by name
    per page `as: ref`, then `node.set {ids: {"$ref": ref, "field": "ids"}, path, width, height}`). This first edit
    also makes FigCraft compute every auto layout (before it, children sit where the JSON put them).
@@ -89,8 +98,10 @@ otherwise and prints what is missing.
   reused by every run, opened only when none answers there, so never open one yourself. The agent's cursor glides to
   every part it builds, a chat label beside it says what it is doing, and the view follows (spotlight). 20 frames
   took 5 s at `--pace 0.5`, 61 steps 28 s at `--pace 1`. `--hold 60` keeps the session open after.
-- Without `--live`: fast (61 steps in under 0.1 s), for rebuilds nobody watches; the result the boss reviews is
-  still opened in his window afterwards (`open_file`).
+- Without `--live`: fast (61 steps in under 0.1 s), for rebuilds nobody watches. A product plan (research not
+  `none:`) must `"save"`, and every run ends with that file open in the boss's window: figlive opens the window when
+  none answers on 7800 and exits 1 `NOT IN THE WINDOW` when it cannot (then fix it and `open_file` it there before you
+  report). `--no-viewer` is refused for a product plan.
 - Plan: `{"research": ".brain/design/proposal/research.md", "app": true (pack checked with --app), "save":
   ".brain/design/proposal/proposal.figcraft", "open": "<optional .figcraft or figrest .json>", "fonts": [<files from design/scripts/fonts.mjs, section 5>], "defaultFonts": "<only when a built-in face is right: why>", "steps": [...]}`; a step
   is `{"label", "screen": "<### name in the pack>", "state": "empty|loading|error" (none = default), "mode": "light|dark" (none = light), ...}` plus one of
@@ -118,8 +129,8 @@ otherwise and prints what is missing.
   `{"$ref": name, "field": "ids/0"}` (`{"$step": n}` by position). One undo step.
 - View: `page.select {id}`, `view.zoomFit`, `view.zoomSelection`, `view.set {zoom, cx, cy}`.
 - Files: `open_file {path, reload}`, `save_file {path}`, `file.close {index, force}`, `doc.switch {index}`.
-- Headless CLI: `figcraft-cli commands | info | convert | render | export | run SCRIPT.json [--in f] [--out f]`
-  (`run` takes a JSON array of {command, params}, one all-or-nothing step).
+- CLI for lookups and scratch checks, never the boss's view: `figcraft-cli commands | info | convert | render |
+  export | run SCRIPT.json [--in f] [--out f]` (`run` takes a JSON array of {command, params}, one all-or-nothing step).
 Refresh the catalogue for a new FigCraft version: `figcraft-cli commands > references/commands-full.txt`.
 
 ## 4. Verify loop (every frame)
@@ -158,3 +169,19 @@ the frames were drawn in Nunito Sans / Montserrat / Lato; boss 2026-11-10). So:
 - Tabs pile up across reopen rounds: `doc.list`, then `file.close {index, force:true}` from the highest index.
 - A shadow under every card, an icon in a coloured circle, text abbreviations as icons: design tells, not FigCraft
   limits. Draw real icons as vectors (paths) and follow the `design` skill.
+
+## 7. Motion in the prototype (what moves comes from DESIGN.md / the direction's Motion & Interaction table)
+FigCraft shows interaction and transitions, not every effect (no scroll scrub, shimmer loop, haptics or physics):
+draw what it can here, demo the rest live in `proposal.html` (`design/references/app-motion.md` section 9).
+- Component states: one component set per interactive component with variants `State=Default|Hover|Pressed|Focus|
+  Disabled|Loading` (`component.combineVariants`, `component.addVariant`), then on the Default variant
+  `proto.interaction.add {id, trigger:{type:"onHover"}, action:{type:"changeTo", dest:<Hover variant>},
+  transition:{type:"smartAnimate"}, durationMs:<token>, easing:{customBezier:{x1,y1,x2,y2}}}` (onPress -> Pressed).
+- Screen changes: `navigate` / `back` / `openOverlay` with the direction's transition (`push` or `slideIn` +
+  `direction` for forward navigation, `dissolve` for fade-through, `smartAnimate` for a shared element: keep the
+  moving layer's name identical on both frames); `easing:{customSpring:{mass, stiffness, damping}}` for a spring token.
+- A feedback sequence (submit -> loading -> success or error): frames or variants chained with
+  `trigger:{type:"afterDelay", ms}` + `changeTo` / `navigate`.
+- Durations and curves are the DESIGN.md tokens, never FigCraft's presets by habit; exit faster than enter.
+- Check: `get_node` lists `interactions`, `proto.flow.add` names the flow, `proto.preview {start}` plays it in the
+  boss's window; a smartAnimate that jumps means a renamed layer.

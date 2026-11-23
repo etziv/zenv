@@ -115,7 +115,11 @@ function check(file, app) {
   // 4. UX rules from the catalogue
   const ux = sec("UX rules");
   if (ux == null) fail("## UX rules is missing");
-  else { const qs = (ux.match(/search\.py/g) || []).length; (qs >= 3 ? ok : fail)("UX rules: " + qs + " catalogue queries recorded (search.py ... --domain/--stack; need 3)"); }
+  else {
+    const qs = (ux.match(/search\.py/g) || []).length; (qs >= 3 ? ok : fail)("UX rules: " + qs + " catalogue queries recorded (search.py ... --domain/--stack; need 3)");
+    const motion = ux.split("\n").filter((l) => /search\.py/.test(l) && /--domain\s+gsap|animat|motion|transition|interaction|feedback|gesture|haptic|skeleton/i.test(l)).length;
+    (motion ? ok : fail)("UX rules: " + motion + " motion / interaction queries (--domain gsap, or --domain ux \"animation ...\"; need 1; references/app-motion.md section 1)");
+  }
   // 5. every key screen: its question, its signature, its components from the library
   const sc = sec("Screens");
   if (sc == null) fail("## Screens is missing");
@@ -125,7 +129,8 @@ function check(file, app) {
     for (const b of blocks) {
       const name = b.split("\n")[0].trim(), lib = (b.match(/lib:[a-z-]+\/[\w.-]+/g) || []).length;
       const q = /question:/i.test(b), sig = /signature:/i.test(b), comp = /components?:/i.test(b), st = /states?:[^\n]*empty[^\n]*loading[^\n]*error|states?:[^\n]*loading[^\n]*empty[^\n]*error/i.test(b);
-      (q && sig && comp && st && lib ? ok : fail)("Screen " + name + ": " + [q ? "" : "no question:", sig ? "" : "no signature:", comp ? "" : "no components:", st ? "" : "no states: line naming empty, loading and error", lib ? lib + " lib refs" : "no lib: ref"].filter(Boolean).join(", "));
+      const ix = /^\**interactions?\**\s*:[ \t]*(\S|\r?\n\s*[-*]\s+\S)/im.test(b);
+      (q && sig && comp && st && ix && lib ? ok : fail)("Screen " + name + ": " + [q ? "" : "no question:", sig ? "" : "no signature:", comp ? "" : "no components:", st ? "" : "no states: line naming empty, loading and error", ix ? "" : "no interactions: line (what moves on it: trigger -> effect; app-motion.md)", lib ? lib + " lib refs" : "no lib: ref"].filter(Boolean).join(", "));
       const els = elements(b, file), badEl = els.filter((e) => e.why);
       (els.length && !badEl.length ? ok : fail)("Screen " + name + " elements: " + (els.length ? (els.length - badEl.length) + "/" + els.length + " with job and source" + (badEl.length ? "; " + badEl.map((e) => e.name + " (" + e.why + ")").join("; ") : "") : "no `elements:` list (each drawn element: job | source; research-pack.md step 6)"));
     }

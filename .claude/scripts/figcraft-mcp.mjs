@@ -31,7 +31,22 @@ const cli = (args) => {
   c.lines = readline.createInterface({ input: c.stdout });
   return c;
 };
-const pipeOut = (c) => c.lines.on("line", (l) => process.stdout.write(l + "\n"));
+const pipeOut = (c, edit = (l) => l) => c.lines.on("line", (l) => process.stdout.write(edit(l) + "\n"));
+const WINDOW = "Backend: the FigCraft app window on the boss's screen; it opens on the first tool call, and a call that " +
+  "cannot reach it fails with the fix (never headless: the boss must see the design).";
+let clientInitId;
+const truthful = (l) => {
+  let m;
+  try {
+    m = JSON.parse(l);
+  } catch {
+    return l;
+  }
+  if (clientInitId === undefined || m.id !== clientInitId || typeof m.result?.instructions !== "string") return l;
+  m.result.instructions = m.result.instructions.replace(/Backend: headless[^.]*\./, WINDOW);
+  return JSON.stringify(m);
+};
+let noWindowCause = "";
 
 async function startApp() {
   if (await listening()) return true;
@@ -40,17 +55,19 @@ async function startApp() {
     stdio: "ignore",
   });
   let failed = false;
-  app.on("error", (e) => ((failed = true), log(`cannot start the FigCraft app in ${DIR} (${e.code})`)));
+  app.on("error", (e) => ((failed = true), log((noWindowCause = `cannot start the FigCraft app in ${DIR} (${e.code})`))));
   app.unref();
   for (const until = Date.now() + 30_000; !failed && Date.now() < until; await new Promise((r) => setTimeout(r, 500)))
     if (await listening()) return true;
-  if (!failed) log(`the FigCraft app did not open port ${PORT} within 30 s`);
+  if (!failed) log((noWindowCause = `the FigCraft app did not open port ${PORT} within 30 s`));
   return false;
 }
 
-// attach to the app and replay the handshake; resolves to the attached child, or null (stay headless)
-async function attach(handshake) {
-  if (!(await startApp())) return null;
+async function attach(handshake, spawnApp) {
+  if (!(spawnApp ? await startApp() : await listening())) {
+    if (!spawnApp) noWindowCause = `nothing listens on port ${PORT}`;
+    return null;
+  }
   const c = cli(["mcp", "--attach", String(PORT), "--timeout", "120"]);
   const [init, ...rest] = handshake;
   const id = "figcraft-mcp-replay";
@@ -72,7 +89,7 @@ async function attach(handshake) {
   if (!ok) {
     c.removeAllListeners("exit");
     c.kill();
-    return (log("figcraft-cli --attach failed the handshake (exit, error or 10 s silence)"), null);
+    return (log((noWindowCause = "figcraft-cli --attach failed the handshake (exit, error or 10 s silence)")), null);
   }
   for (const l of rest) c.stdin.write(l + "\n");
   return c;
@@ -81,40 +98,60 @@ async function attach(handshake) {
 fs.mkdirSync(WRITE_ROOT, { recursive: true }); // a missing root makes figcraft exit (os error 2)
 const appUp = await listening();
 let active = appUp ? cli(["mcp", "--attach", String(PORT), "--timeout", "120"]) : cli(["mcp", ...ROOTS]);
-pipeOut(active);
+pipeOut(active, appUp ? undefined : truthful);
 active.on("exit", (code) => process.exit(code ?? 1));
-let state = appUp ? "attached" : "headless"; // headless -> switching -> attached
+let state = appUp ? "attached" : "headless";
 const handshake = []; // initialize request + notifications/initialized, replayed to the attached cli
 const queue = [];
 
+const methodOf = (line) => {
+  try {
+    return JSON.parse(line).method;
+  } catch {}
+};
 const lazyOk = (m) => !m || m === "initialize" || m === "ping" || m.endsWith("/list") || m.startsWith("notifications/");
 
+const refuse = (line) => {
+  const { id, method } = JSON.parse(line);
+  if (id === undefined) return;
+  const text =
+    "FigCraft window not reachable, nothing was done: design work never runs headless (the boss must see it). " +
+    `Cause: ${noWindowCause}. Fix: FigCraft installed (or user env FIGCRAFT_CLI=<dir>/figcraft-cli.exe), no FigCraft app of ` +
+    "another project holding the port, then /mcp -> figcraft -> Reconnect. If that needs the boss, one line: " +
+    '"FigCraft tidak tersambung: /mcp -> figcraft -> Reconnect".';
+  const reply =
+    method === "tools/call"
+      ? { result: { content: [{ type: "text", text }], isError: true } }
+      : { error: { code: -32603, message: text } };
+  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, ...reply }) + "\n");
+};
+
 async function toApp() {
+  const spawnApp = state === "headless";
   state = "switching";
-  const c = await attach(handshake);
+  const c = await attach(handshake, spawnApp);
   const old = active;
   if (c) {
     active = c;
     old.removeAllListeners("exit");
     old.stdin.end(); // it finishes in-flight replies, then exits
     c.on("exit", (code) => process.exit(code ?? 1));
-  } else log("staying headless: figcraft tools work without a window");
-  state = c ? "attached" : "headless-only";
-  for (const l of queue.splice(0)) active.stdin.write(l + "\n");
+  } else log(`no FigCraft window (${noWindowCause}): tool calls are refused until it is reachable`);
+  state = c ? "attached" : "no-window";
+  for (const l of queue.splice(0)) c || lazyOk(methodOf(l)) ? active.stdin.write(l + "\n") : refuse(l);
   if (stdinEnded) active.stdin.end();
 }
 
 let stdinEnded = false;
 readline.createInterface({ input: process.stdin }).on("line", (line) => {
   if (!line.trim()) return;
-  let method;
-  try {
-    method = JSON.parse(line).method;
-  } catch {}
+  const method = methodOf(line);
   if (state === "headless" && (method === "initialize" || method === "notifications/initialized")) handshake.push(line);
+  if (state === "headless" && method === "initialize") clientInitId = JSON.parse(line).id;
   if (state === "switching") return queue.push(line);
   // before initialize (Claude Code sends server/discover first) there is no handshake to replay: headless answers
-  if (state === "headless" && handshake.length && !lazyOk(method)) return queue.push(line), toApp();
+  const unattached = state === "headless" || state === "no-window";
+  if (unattached && handshake.length && !lazyOk(method)) return queue.push(line), toApp();
   active.stdin.write(line + "\n");
 }).on("close", () => {
   stdinEnded = true;

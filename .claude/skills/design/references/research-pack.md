@@ -8,8 +8,9 @@ re-spawned for FigCraft, a worker, the `frontend` build). `node .claude/skills/d
 ## How to fill it
 1. UX rules, first (design SKILL.md "First: UI/UX Pro Max"): 3+ catalogue queries
    (`python -B .claude/skills/design/uiux/scripts/search.py "<product> <audience>" --design-system -f markdown`,
-   `"<concern>" --domain ux`, `--stack <stack>`), each with the rule it gave and where it applies. Their words seed
-   the survey and library searches.
+   `"<concern>" --domain ux`, `--stack <stack>`), each with the rule it gave and where it applies; 1+ of them on
+   motion and interaction (`"<trigger> <effect>" --domain gsap` or `"animation <concern>" --domain ux`;
+   `references/app-motion.md` section 1). Their words seed the survey and library searches.
 2. Survey: 8+ shipped products of the category and its neighbours (web search: galleries, the products' own sites,
    release notes, docs with screenshots; `references/web-research.md` lists where), on 5+ different sites, plus
    1+ studied site from the library (`library.mjs search "<category words>" --kind sites`). Per reference: its
@@ -21,7 +22,10 @@ re-spawned for FigCraft, a worker, the `frontend` build). `node .claude/skills/d
    not). Or write `none: <reason>`.
 5. Screens: one `###` per key screen with `question:` (what the screen answers for its user), `signature:` (the one
    element that makes it this product's screen), `components:` (each from the library, `lib:` ids, or named) and
-   `states:` (what its empty, loading and error states show; each one is drawn, not only described).
+   `states:` (what its empty, loading and error states show; each one is drawn, not only described) and
+   `interactions:` (what moves on it and why, `trigger -> effect`: the press, the loading -> result change, how it
+   is entered and left, a gesture; `references/app-motion.md` sections 4-7; they become rows of the direction's
+   Motion & Interaction table).
 6. Elements (function before form, boss 2026-11-10): under each screen, `elements:` lists EVERY element you will draw
    on it (button, field, card, chart, stat, tab, filter, badge, menu or nav item, icon button, panel), one line each:
    `- <element>: job: <what the user does or learns with it> | source: <what backs it>`. The source is a real thing in
@@ -55,7 +59,8 @@ the dev to settle first. It is never drawn as a guess.
 ## UX rules
 - search.py "report designer finance staff" --design-system -> navy/grey, trust blue, accent only on the main action (its landing "Pattern" not used: app screens); applies to: palette
 - search.py "inline validation near field" --domain ux -> errors next to the field, on blur; applies to: Settings
-- ... (3+)
+- search.py "skeleton loading" --domain gsap -> shimmer on transform, stop off-screen and under reduced motion; applies to: Template editor loading
+- ... (3+, 1+ on motion)
 ## Survey
 - Rows Report Designer https://www.example.com/designer take: band layout with a live preview strip under the canvas
 - ... (8+)
@@ -72,6 +77,7 @@ question: where does this field come from and how will it print?
 signature: <the one element>
 components: lib:app-patterns/builder-canvas, lib:app-shells/<id>, property inspector, ...
 states: empty = <what shows>; loading = <...>; error = <...>
+interactions: field dropped -> settles on the band grid (spring); export -> button spinner, then the preview strip slides up; open from the list -> container transform
 elements:
 - field list: job: pick the data field to place on the band | source: contracts/template.md#fields
 - band canvas: job: place and move fields where they will print | source: M2 acceptance "drag a field onto a band"
