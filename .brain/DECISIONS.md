@@ -76,9 +76,9 @@ app stays in Zenv, which calls the client's CLI/JSON interface as it calls `tail
 Name: Noirlynx, CLI `noirlynx` (the boss, 2026-11-10: "kasih nama sistem jaringan privat noirlynx").
 Stack (the boss, same day): all Rust; console = Rust backend + React; desktop client native without a webview ("base codenya pakai rust").
 
-## D-021 Pure Rust UI with egui/eframe instead of Tauri + WebView (chosen, not started) [active] 2026-11-18
+## D-021 Pure Rust UI with egui/eframe instead of Tauri + WebView [active] 2026-11-18
 Decision: Zenv's UI moves to egui/eframe 0.37 + wgpu (the stack of FigCraft and ArtCraft Launcher), calling `zenv-core` directly; the
-Tauri shell and React UI go once every module runs natively. Plan, sub-choices and risk gates: [M20](MODULES.md#m20-native-ui-egui-without-webview).
+Tauri shell and React UI were removed in task 18 (2026-11-23) once every module ran natively. Plan, sub-choices and risk gates: [M20](MODULES.md#m20-native-ui-egui-without-webview).
 Why: Zenv + its WebView2 used ~480 MB private (measured 2026-11-18); egui has the widest ecosystem (syntect, commonmark, kittest), free licence.
 Rejected: Slint 1.19 (GPL-3.0 or attribution licence, weaker terminal/editor widgets), iced 0.14 (slow releases, thinnest ecosystem).
 Source: the boss, 2026-11-18 ("buat versi pure rustnya", then on the PROPOSAL card "A jangan kerjakan dulu, buat task dulu aja"), task 12.
@@ -120,6 +120,8 @@ G-021 2026-11-23 Do not SendKeys into a Studio window right after the Alt tap th
 G-022 2026-11-23 Do not use `consume_key(Modifiers::NONE, Key::Enter)` to mean "plain Enter" in egui 0.37: `matches_logically` ignores Shift when the pattern lacks it, so Shift+Enter is consumed too (chat sent instead of a new line; test `shift_enter_is_a_new_line_and_enter_sends`, task 17). Check `!i.modifiers.shift` first.
 G-023 2026-11-23 Do not combine `TextEdit::frame(..)` with `TextEdit::margin(..)` in egui 0.37: the margin is ignored when a frame is given (`text_edit/builder.rs` ~693); put the margin in the frame's `inner_margin` (task 17).
 G-024 2026-11-23 Do not query or click inside an `egui::Area` in egui_kittest right after it appeared or changed size: it is laid out a frame at the old pivot and kittest keeps that node rect for a few frames, so the click lands on nothing; step `AREA_SETTLE` (6) frames first (task 17, `tests/chat.rs`).
+G-025 2026-11-23 Do not fake `Shared.live` in a chat unit test right after `Chat.end`: the real `studio-chat` worker handles `Op::End` later and `live.take()` removes the fake one (failed 3/40); wait until `live` is `None` first (task 18, `a_mode_picked_between_turns_survives_the_restart`).
+G-026 2026-11-23 Do not test an NSIS installer with `/S /D=<drive root>` (or any /D NSIS may drop) on a PC with a real install: without `AllowRootDirInstall true` NSIS ignores it and installs into the default folder; a test build killed the boss's Zenv and services in C:\zenv (task 18 qa). Test builds default to `%TEMP%\<PRODUCTNAME>` now; snapshot C:\zenv before and after.
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).
 

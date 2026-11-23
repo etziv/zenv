@@ -1,6 +1,6 @@
 # DESIGN (adopted from the current UI 2026-11-09: tokens in src/index.css; max 120 lines, edited in place)
 
-- The native UI (M20) reproduces this look and every screen's layout exactly (D-022); the React UI is the reference.
+- The native UI (M20) reproduces this look and every screen's layout exactly (D-022); the React UI it was matched to was removed in task 18 (git history before 2026-11-23).
 - Style: "front panel": a black header bar with navigation and live port LEDs over a quiet dot-grid work surface; neutral
   black/grey surfaces, green only as an accent; the bright LED green only for things that are live (running service, active tab).
   The boss wants black + green, no green-tinted backgrounds, no logo mark (wordmark "zenv" only). Source: `src/index.css` header comment, the boss 2026-10-19.

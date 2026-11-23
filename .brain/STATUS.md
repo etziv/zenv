@@ -4,15 +4,15 @@ Updated: 2026-11-23
 
 ## Current state
 - Adopted into the kit 2026-11-09: ARCHITECTURE, BRIEF, MODULES, FLOWS, DECISIONS, DESIGN written from the code; approved by the boss 2026-11-09.
-- Verify (2026-11-09): typecheck ok, Vitest 43/43, `npm run test:rust` 237 passed / 5 ignored, `cargo check` ok, `tailnet_e2e` 2/2.
-- Installed build in `C:\zenv`: 2026-11-09 16:59, version 1.0.0 (task 6), installed without `/R`.
+- Verify (as of 2026-11-23, task 18): build-rust, test-rust, test-native only; tsc/Vitest left with React.
+- Installed build in `C:\zenv` (2026-11-23, task 18 qa incident): native zenv.exe written by a ZenvTest build, `uninstall.exe` is a ZenvTest uninstaller (do not run), ZenvTest keys + Start menu link left, Zenv and its services stopped; data intact. Fix: run the real `installer/Zenv-setup.exe` (or the old `src-tauri/target/release/bundle/nsis/Zenv_1.0.0_x64-setup.exe`), then remove HKCU `...\Uninstall\ZenvTest`, `Software\Zenv\ZenvTest`, `ZenvTest.lnk`.
 - Git: GitHub `etziv/zenv` (public since 2026-11-09), release mode merge (D-019); history before 2026-11-09 is not in git.
 
 ## Next steps
 - Vaultwarden on the tailnet: live 2026-11-09 (`svc:vaultwarden`, this PC `tag:server`; reached from another device). From this PC use
   `vaultwarden.localhost` (tagged, not `autogroup:member`). DOMAIN follows the tailnet name via `D:\Hanif\vaultwarden\sync-domain.ps1` and the
   scheduled task "Vaultwarden tailnet domain" (logon + 15 min, proven 2026-11-09). `SIGNUPS_ALLOWED` false.
-- Native UI (M20, task 13, as of 2026-11-19): steps 1-6 built in `src-native/`, matched to React (D-022), qa PASS WITH NOTES, security clean, shipped with task 13. Step 7 (tray, close to tray, single instance) shipped in task 14. Step 8a (Studio window: files, editor, Go to file) built in task 15, 8b (terminal panel) in task 16, 8c (chat tab) in task 17 (as of 2026-11-23). Next: 9 installer, remove Tauri and React.
+- Native UI (M20): steps 1-8 in tasks 13-17; step 9 (task 18, 2026-11-23): bin `zenv`, own NSIS installer `installer/zenv.nsi`, Tauri shell and React deleted. Left: install it over C:\zenv.
 - Native chat (task 17): not yet run in the real window: MCP toggle, palette terminal screens; a "/" chip that ignored clicks once (not reproduced).
 
 ## Open issues

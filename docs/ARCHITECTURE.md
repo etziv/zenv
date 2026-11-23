@@ -1,18 +1,16 @@
 # Zenv Architecture
 
 Zenv is a Windows-first local development environment manager built with
-Rust + Tauri 2 (backend) and React + TypeScript + Vite + Tailwind + shadcn/ui
-(frontend). It manages runtimes, web servers, databases and local sites through
-narrow, typed backend operations. The frontend never executes processes or
+Rust, with an egui/eframe UI that calls the core directly (the Tauri + React UI
+was replaced in 2026-11). It manages runtimes, web servers, databases and local
+sites through narrow, typed core operations. The UI never executes processes or
 touches the filesystem directly.
 
 ## Layering
 
 ```
-React feature modules (src/features/*)
-        │  typed invoke() wrappers (src/lib/api.ts)
-        ▼
-Tauri shell: src-tauri/src/commands.rs      ← narrow, validated, no raw exec
+egui pages (src-native/src/pages/*, studio/*)
+        │  Loader (reads) · Action::Run(Task) (writes, off the UI thread)
         ▼
 zenv-core crate (src-tauri/core): Core owns Db, ServiceManager, SiteManager, AppPaths
         ▼
@@ -25,7 +23,7 @@ storage (SQLite + migrations)     platform/windows (Job Objects, IP Helper, even
 
 ## Crates
 
-- `src-tauri` (`zenv`): the Tauri shell. It holds window setup, plugins, and the command surface, and nothing else.
+- `src-native` (`zenv-native`, bin `zenv`): the egui UI, tray and Studio windows; `src-tauri/Cargo.toml` is the workspace root.
 - `src-tauri/core` (`zenv-core`): all domain logic, with no GUI dependencies. Keeping it separate lets the core be unit- and integration-tested on its own. It also sidesteps Windows test executables failing to load `comctl32` v6 entry points that only the app manifest provides.
 
 ## Modules (zenv-core)

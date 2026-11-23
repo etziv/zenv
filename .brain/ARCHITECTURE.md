@@ -1,39 +1,37 @@
 # ARCHITECTURE (adopted from the code 2026-11-09; the detailed design is docs/ARCHITECTURE.md)
 
 Status: approved 2026-11-09 (adopted from the code)     Versions verified: 2026-11-09
-Platform: other: Windows desktop app (Windows 10/11 x64, WebView2). macOS later, only when the boss asks.
+Platform: other: Windows desktop app (Windows 10/11 x64). macOS later, only when the boss asks.
 
 ## Chosen stack (with versions, from package-lock / Cargo.lock, 2026-11-09)
-- Shell: Tauri 2.12.5 (`@tauri-apps/api` / `@tauri-apps/cli` 2.12.4), plugins opener, dialog, single-instance; NSIS installer.
+- UI: egui/eframe 0.37 (glow), egui_extras/syntect (editor colours), alacritty_terminal 0.26 (Studio terminals), tray-icon,
+  rfd (file dialogs); bin `zenv.exe` from `src-native`, resources by `embed-resource` (task 18). Tauri + React removed 2026-11-23 (task 18, D-021).
+- Installer: own NSIS 3 script `installer/zenv.nsi` built by `scripts/build-installer.mjs` (makensis from `ZENV_MAKENSIS`, Tauri's
+  NSIS cache or Program Files); same registry keys as the old Tauri installer, so it upgrades C:\zenv in place.
 - Backend: Rust 1.99.0 on `x86_64-pc-windows-gnu` (needs a MinGW-w64 GCC: `ZENV_MINGW_BIN`, `scripts/with-toolchain.mjs`).
   rusqlite 0.40.2 (bundled SQLite), minijinja 2.24.0 (server config templates), ureq 3.4.2 (downloads),
   portable-pty 0.9.0 (ConPTY terminals), rcgen (local CA), zip / sevenz-rust2 (installers).
-- Frontend: React 19.3.1, TypeScript 7.0.2, Vite 8.3.4, Tailwind CSS 4.3.3, shadcn/ui on radix-ui, TanStack Query 5.104.3,
-  CodeMirror 6 + Prettier 3 (Studio editor), xterm.js 6.0.0 (Studio terminals), lucide-react icons.
-- Tests: Vitest 5.0.5 + Testing Library (jsdom); Rust unit tests; ignored e2e tests against real servers (`core/tests/*_e2e.rs`).
+- Tests: Rust unit tests, egui_kittest UI tests (`src-native/tests`); ignored e2e tests against real servers (`core/tests/*_e2e.rs`).
 
 ## Why this and rejected options
-- Tauri + Rust: a small native Windows app that can own processes (Job Objects), ports and files; see docs/ARCHITECTURE.md.
+- Rust (first Tauri, now egui, [D-021](DECISIONS.md#d-021-pure-rust-ui-with-eguieframe-instead-of-tauri--webview)): a small native Windows app that can own processes (Job Objects), ports and files; see docs/ARCHITECTURE.md.
 - Rejected in the repo's history: Electron-style heavy shell (not used); a reimplemented Claude agent in Rust (Studio runs the official `claude.exe`, [D-012](DECISIONS.md#d-012-studio-chat-runs-the-official-claude-code-over-pipes)).
 
 ## Folder structure
-- `src/` React UI: `app/` (shell, routes, navigation), `features/<area>/` (apps, dashboard, logs, runtimes, settings,
-  sites, studio, tools, tray, web-servers), `lib/api/` (typed `invoke` client, queries, types), `components/ui/` (shadcn).
-- `src-tauri/src/` Tauri shell: `commands.rs` (the whole IPC surface), `lib.rs` (setup, windows, command list),
-  `studio_window.rs`, `router_window.rs`, `tray.rs`.
-- `src-native/` crate `zenv-native` (M20, D-021; member of the `src-tauri` workspace, bin `zenv-native` until Tauri goes):
+- `src-tauri/` is only the Cargo workspace root now (members `core`, `../src-native`; name kept, task 18) plus `icons/`.
+- `src-native/` crate `zenv-native`, bin `zenv` (`main.rs`: elevated hosts helper `--zenv-apply-hosts` first, then the GUI;
+  `build.rs` + `windows/zenv.rc`: icon and version info):
   egui/eframe 0.37 UI on `Core` directly. `app.rs` (frame, tasks, toasts), `shell.rs` (header, port LED rail), `pages/<area>.rs`
   (page struct + pure `view` fns; data via `loader::Loader`, writes via `Action::Run(Task)`), `widgets.rs`, `theme.rs` (DESIGN.md
   tokens), `lucide.rs` (generated icon consts), `assets/fonts/` (Chakra Petch, IBM Plex Sans, JetBrains Mono TTF, Lucide; OFL/ISC).
   Tests: `tests/*.rs` egui_kittest; `--ignored render_dashboard_png` writes `src-tauri/target/native-shots/*.png`.
 - `src-tauri/core/` crate `zenv-core`: all domain logic, no GUI dependency; `src/storage/migrations/*.sql`; `tests/*_e2e.rs`.
-- `src-tauri/core/templates/<server>/` server config templates (minijinja, `include_str!` in `config_generator`); `public/file-icons/` vendored Material Icon Theme SVGs (MIT).
-- `scripts/`: `with-toolchain.mjs` (Rust env), `copy-installer.mjs`, `check-nsis-template.mjs`; `installer/Zenv-setup.exe` output.
+- `src-tauri/core/templates/<server>/` server config templates (minijinja, `include_str!` in `config_generator`); file icons: `src-native/assets/file-icons.png` atlas (Material Icon Theme, MIT).
+- `scripts/`: `with-toolchain.mjs` (Rust env), `build-installer.mjs`; `installer/zenv.nsi` -> `installer/Zenv-setup.exe`.
 - Runtime home `C:\zenv` (`ZENV_HOME` overrides): `bin/<component>/<version>`, `data`, `etc`, `logs`, `dev`, `backups`, `downloads`, `zenv.db`.
 
 ## Module -> component map (layering)
-React feature -> `api.*` in `src/lib/api/client.ts` -> `#[tauri::command]` in `commands.rs` (narrow, typed, no raw exec;
-blocking work through `blocking()`) -> `Core` (`core/src/app_core.rs`) which owns `Db`, `ServiceManager`, `SiteManager`,
+`src-native` page -> `loader::Loader` (reads) / `Action::Run(Task)` (writes, off the UI thread) -> `Core` (`core/src/app_core.rs`) which owns `Db`, `ServiceManager`, `SiteManager`,
 `Installer`, `Tls`, `PhpRuntimes`, `AppProcesses`, studio `Terminals` and `Chats` -> domain modules
 (`runtime_*`, `service_manager`, `web_server/*`, `local_sites`, `virtual_host`, `domain_manager`, `database_manager`,
 `cache_manager`, `tls`, `tailnet`, `docker_apps`, `ai_router`, `app_process`, `studio*`, `project_files`, `code_format`)
@@ -47,30 +45,30 @@ Studio windows are labelled `studio-<site id>`; terminals and chats belong to th
 - `tailnet_apps` (site -> loopback port, optional Tailscale Service name), `docker_apps` (site -> container/compose),
   `path_choices` (one version per component on the user PATH), `app_settings` (key/value).
 - Migrations `0001`..`0014` in `core/src/storage/migrations/`; backup before upgrade, newer schema refused.
-- Outside the DB: localStorage in the UI (theme, Studio layout and chat options); Claude Code's own session files are read, never written.
+- Outside the DB: eframe storage `%APPDATA%\Zenv\data` (route, theme, Studio layout and chat options); Claude Code's own session files are read, never written.
 
 ## Verification commands (exact; used by builders and QA)
-- build: `node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml`; the web build
-  (`npm run build`, tsc + vite) left the verify during M20 (boss 2026-11-20, approved 2026-11-23: the native UI replaces React), run it by hand after a `src/` change
-- lint: `npm run typecheck` (no ESLint/Clippy configured)
-- test: `npm test` (Vitest); `cargo test ... -p zenv-core -j 1` (test-rust) and `-p zenv-native -j 1` (test-native), exact lines
+- build: `node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml`; no lint step (no Clippy configured)
+- test: `cargo test ... -p zenv-core -j 1` (test-rust) and `-p zenv-native -j 1` (test-native), exact lines
   in project.json; `-j 1` because commit memory runs out at higher parallelism on this PC (G-011)
 - other: `npm run test:e2e` with `ZENV_TEST_*` roots (real Apache/Nginx/PHP/FrankenPHP/MySQL/...); `npm run installer`
-  builds `installer/Zenv-setup.exe`; `npm run check:nsis` after a Tauri CLI upgrade.
+  builds `installer/Zenv-setup.exe` (extra makensis `/D` args pass through: `/DPRODUCTNAME=ZenvTest` for a test install that
+  leaves the real Zenv's registry and shortcuts alone).
 
 ## Testing strategy
-- Pure logic as unit tests next to the code (Rust `#[cfg(test)]`, Vitest `*.test.ts`).
+- Pure logic as unit tests next to the code (Rust `#[cfg(test)]`); UI behaviour in egui_kittest (`src-native/tests`).
 - Anything touching real servers, Docker, Tailscale or installers as `#[ignore]` e2e tests in `core/tests/`, run by hand with real binaries.
 - Studio chat protocol checked against the real `claude` CLI before it ships (probe scripts, no tokens where possible).
 
 ## Security baseline (from the code and docs/ARCHITECTURE.md)
-- IPC commands take typed input only, never a program, argument list or arbitrary path to run or read (`commands.rs` header).
+- `Core` methods take typed input only, never a program, argument list or arbitrary path to run or read.
 - Processes: allow-listed executables, one Job Object per service; terminals/chats only for the owning Studio window.
 - Files: Zenv never edits a server installation's own config, never deletes project files or unmanaged installs, overwrites
   only ledger files (backup first); project file access confined to the project root; `.env` read-only.
 - Network: services on 127.0.0.1 by default; tailnet access checks the Host name; local CA name-constrained to `.test`, `.localhost`, `.example`.
 - Downloads: official sources with SHA-256 / signature checks; npm routers without install scripts.
-- CSP: `default-src 'self'`, `img-src 'self' data:`, `frame-src http: https:` (Studio preview).
+- Installer: per-user, refuses a drive root, Windows and Program Files, locks a new home with icacls before any file lands;
+  closes only the zenv.exe running from its own folder; uninstall keeps everything Zenv created.
 
 ## Risk gates (pass criterion + pre-chosen fallback each)
 - Claude Code stream-json protocol changes: probe passes (`initialize`, a prompt, a permission request) -> else keep the terminal tab as the fallback.

@@ -11,7 +11,7 @@ The boss (and later other Windows developers) running many PHP, Go, Rust, Python
 replaced FlyEnv and Laragon with Zenv (2026-10-19) and want each service and app switched on/off from one place.
 
 ## Platform (web / android / other) and why
-Other: a native Windows desktop app (Tauri 2 + Rust), because it must own processes, ports, the hosts file and certificates.
+Other: a native Windows desktop app (Rust; egui UI since task 18, D-021), because it must own processes, ports, the hosts file and certificates.
 
 ## Modules
 MVP: see MODULES.md (M1-M18): services, web servers, apps, PHP per app, databases, installers, HTTPS, proxy app programs,
@@ -23,7 +23,7 @@ Later:
 - Project profiles / Stacks ([D-002](DECISIONS.md#d-002-no-project-profiles-or-stacks)); a public tunnel ([D-005](DECISIONS.md#d-005-tailscale-instead-of-a-public-tunnel)); an import feature from other tools.
 
 ## Constraints (budget, hosting, team skills, existing tools, deadline)
-- Windows 10/11 x64 with WebView2; Rust windows-gnu toolchain with WinLibs GCC; no administrator rights needed except UAC for the hosts file and the CA trust.
+- Windows 10/11 x64; Rust windows-gnu toolchain with WinLibs GCC; no administrator rights needed except UAC for the hosts file and the CA trust.
 - Everything Zenv manages lives in its home `C:\zenv`; projects can live anywhere.
 
 ## Expected scale
