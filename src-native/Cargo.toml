@@ -17,6 +17,7 @@ egui_extras = { version = "0.37", features = ["image"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 base64 = "0.22"
 rfd = "0.18"
+syntect = { version = "5.3", default-features = false, features = ["default-syntaxes", "regex-fancy"] }
 tracing = "0.1"
 tray-icon = { version = "0.25.1", default-features = false }
 

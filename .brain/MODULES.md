@@ -54,8 +54,9 @@ running. Crates (versions checked 2026-11-18, recheck at start): eframe/egui/egu
 alacritty_terminal 0.26 (own widget; egui_term is stuck on egui 0.31), tray-icon 0.26.1, rfd 0.18; Lucide icon font vendored (ISC);
 single instance by a Windows mutex; Studio preview opens in the default browser; NSIS script without tauri-cli; Vitest -> Rust + kittest.
 Order: 1 shell, theme, dashboard (spike) -> 2 web servers, services -> 3 apps -> 4 runtimes, installers -> 5 tools (AI routers, tailnet,
-Docker) -> 6 logs, settings -> 7 tray, windows -> 8 Studio: files + editor, terminals, chat -> 9 installer, remove Tauri and React.
+Docker) -> 6 logs, settings -> 7 tray, windows -> 8 Studio: 8a files + editor (task 15), 8b terminals, 8c chat -> 9 installer, remove Tauri and React.
 Risk gates (at the spike unless named): builds and opens on `x86_64-pc-windows-gnu` (else glow renderer, then msvc); idle private memory
 <= 150 MB with the dashboard (else glow + smaller font atlas); the boss accepts the dashboard look against DESIGN.md (else restyle first);
 step 8 terminal runs `claude`, vim, truecolor, resize, paste (else open Windows Terminal); editor typing <= 16 ms/frame on a 1 MB file
-(else large files open in VS Code).
+(else large files open in VS Code). Gate 8a result (2026-11-23, task 15): coloured 1 MB failed (~13 ms per 100 KB);
+colours only up to 100 KB with lines <= 2 KB (minified files: 115 ms per key at 20 KB), plain up to 1 MB (14.8 ms median), read-only above 1 MB or a 40 KB line ([G-017](DECISIONS.md)); Studio with a 1 MB file open: 128 MB private.

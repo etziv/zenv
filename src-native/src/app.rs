@@ -35,6 +35,7 @@ pub struct ZenvApp {
     panel: Option<PanelState>,
     panel_closed_at: Option<Instant>,
     quitting: bool,
+    studios: crate::studio::Windows,
 }
 
 struct PanelState {
@@ -147,6 +148,7 @@ impl ZenvApp {
             panel: None,
             panel_closed_at: None,
             quitting: false,
+            studios: crate::studio::Windows::default(),
         }
     }
 
@@ -158,6 +160,10 @@ impl ZenvApp {
     }
 
     fn quit(&mut self, ctx: &egui::Context) {
+        if self.studios.ask_quit(ctx) {
+            self.close_panel();
+            return;
+        }
         self.quitting = true;
         self.panel = None;
         ctx.send_viewport_cmd(ViewportCommand::Close);
@@ -275,6 +281,7 @@ impl ZenvApp {
                     });
                 }
                 Action::Toast(note) => self.toast(note),
+                Action::OpenStudio(site) => drop(self.studios.open(ctx, &self.core, site)),
                 Action::Run(task) => {
                     self.shared.errors.remove(&task.key);
                     self.tasks.start(ctx, &self.core, task)
@@ -392,9 +399,16 @@ impl eframe::App for ZenvApp {
                 }
             }
         }
-        if ctx.input(|i| i.viewport().close_requested()) && !self.quitting && self.tray.is_some() {
-            ctx.send_viewport_cmd(ViewportCommand::CancelClose);
-            ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+        if self.studios.take_quit() && !self.quitting {
+            self.quit(ctx);
+        }
+        if ctx.input(|i| i.viewport().close_requested()) && !self.quitting {
+            if self.tray.is_some() {
+                ctx.send_viewport_cmd(ViewportCommand::CancelClose);
+                ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+            } else if self.studios.ask_quit(ctx) {
+                ctx.send_viewport_cmd(ViewportCommand::CancelClose);
+            }
         }
     }
 
@@ -455,6 +469,7 @@ impl eframe::App for ZenvApp {
         self.toasts(&ctx);
         self.apply(&ctx, actions);
         self.panel(&ctx);
+        self.studios.show(&ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

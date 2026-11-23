@@ -192,6 +192,9 @@ pub fn actions_menu(ui: &mut Ui, page: &mut AppsPage, site: &SiteView, cx: &mut 
         let id = site.site.id.clone();
         cx.actions.push(Action::Run(Task::new(format!("editor:{id}"), "Open in editor", move |c| c.open_in_editor(&id, None).map(|_| ()))));
     }
+    if item(ui, lucide::SPARKLES, "Open in Studio", true) {
+        cx.actions.push(Action::OpenStudio(crate::studio::Site::from(site)));
+    }
     if item(ui, lucide::PENCIL, "Edit all settings", true) {
         page.overlay = Some(Overlay::Form(Box::new(super::form::FormState::edit(site))));
     }

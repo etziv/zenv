@@ -10,7 +10,6 @@ use zenv_core::platform;
 use zenv_native::app::ZenvApp;
 
 const IDENTIFIER: &str = "dev.zenv.desktop";
-const ICON_PNG: &[u8] = include_bytes!("../../src-tauri/icons/128x128.png");
 
 fn main() {
     if let Err(e) = run() {
@@ -51,7 +50,7 @@ fn run() -> Result<(), String> {
             .with_title("Zenv")
             .with_inner_size([1280.0, 820.0])
             .with_min_inner_size([960.0, 600.0])
-            .with_icon(eframe::icon_data::from_png_bytes(ICON_PNG).map_err(|e| e.to_string())?),
+            .with_icon(eframe::icon_data::from_png_bytes(zenv_native::ICON_PNG).map_err(|e| e.to_string())?),
         ..Default::default()
     };
     eframe::run_native("Zenv", options, Box::new(move |cc| Ok(Box::new(ZenvApp::new(cc, core, instance)))))

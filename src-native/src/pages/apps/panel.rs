@@ -106,9 +106,16 @@ fn editor_atom(ui: &Ui, editor: Option<&EditorInfo>) -> egui::Atom<'static> {
     }
 }
 
-fn editor_split_button(ui: &mut Ui, list: &[EditorInfo], preferred: Option<&EditorInfo>) -> (egui::Response, Option<EditorId>) {
+fn editor_split_width(ui: &Ui, preferred: Option<&EditorInfo>) -> f32 {
+    let label = preferred.map_or("No editor", |e| e.name);
+    let text = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), egui::FontId::new(13.5, crate::theme::medium()), egui::Color32::WHITE).size().x);
+    text + 16.0 + ui.spacing().icon_spacing + ui.spacing().button_padding.x * 2.0 + 28.0 + 4.0
+}
+
+fn editor_split_button(ui: &mut Ui, list: &[EditorInfo], preferred: Option<&EditorInfo>) -> (egui::Response, Option<EditorId>, bool) {
     let p = palette(ui);
     let mut picked = None;
+    let mut studio = false;
     let main_resp = ui
         .horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
@@ -142,12 +149,14 @@ fn editor_split_button(ui: &mut Ui, list: &[EditorInfo], preferred: Option<&Edit
                 if list.is_empty() {
                     ui.add_enabled(false, egui::Button::new("No editor found: VS Code, Cursor, Windsurf, Zed, PhpStorm, Sublime…").frame_when_inactive(false));
                 }
+                ui.separator();
+                studio = widgets::menu_item(ui, lucide::SPARKLES, "Studio: editor, Claude Code, preview", true, false);
             });
             chevron_resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, "Choose editor"));
             main_resp
         })
         .inner;
-    (main_resp, picked)
+    (main_resp, picked, studio)
 }
 
 fn row(ui: &mut Ui, label: &str, hint: Option<&str>, control: impl FnOnce(&mut Ui)) {
@@ -208,7 +217,19 @@ pub fn view(
         });
         if let Some(editors) = page.editors.ok() {
             let preferred = editors.preferred.and_then(|id| editors.editors.iter().find(|e| e.id == id)).or(editors.editors.first());
-            let (main_resp, picked) = editor_split_button(ui, &editors.editors, preferred);
+            let (main_resp, picked, studio_picked) = ui
+                .horizontal(|ui| {
+                    let editor_w = editor_split_width(ui, preferred).min(ui.available_width() * 0.45);
+                    let studio_w = (ui.available_width() - editor_w - ui.spacing().item_spacing.x).max(0.0);
+                    let studio = widgets::button_wide(ui, widgets::Kind::Outline, widgets::Size::Default, Some(lucide::SPARKLES), "Open in Studio", true, studio_w)
+                        .on_hover_text("Zenv's editor for this app: its files, Claude Code and the live preview");
+                    let (r, picked, from_menu) = editor_split_button(ui, &editors.editors, preferred);
+                    (r, picked, studio.clicked() || from_menu)
+                })
+                .inner;
+            if studio_picked {
+                cx.actions.push(Action::OpenStudio(crate::studio::Site::from(site)));
+            }
             let editor = picked.or_else(|| main_resp.clicked().then(|| preferred.map(|e| e.id)).flatten());
             if let Some(editor) = editor {
                 let id = site.site.id.clone();

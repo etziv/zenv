@@ -59,6 +59,7 @@ pub enum Action {
     OpenRouter(String, Option<String>),
     Toast(crate::loader::Note),
     Run(Task),
+    OpenStudio(crate::studio::Site),
 }
 
 #[derive(Default)]
