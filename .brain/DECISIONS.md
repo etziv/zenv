@@ -105,6 +105,9 @@ G-010 2026-11-09 Do not start Zenv's servers (mysqld from `C:\zenv\bin`) from a 
 G-014 2026-11-18 Do not use eframe's wgpu renderer for the native UI: it idled at 441-462 MB private on this PC, glow at 57 MB (task 13).
 G-015 2026-11-18 Do not screenshot a native window with CopyFromScreen after SetForegroundWindow: Windows refuses the focus and you capture another app; use PrintWindow(hwnd, dc, 2) (task 13).
 G-016 2026-11-19 Do not open an egui `show_viewport_immediate` window while the eframe root window is hidden: eframe 0.37 paints hidden windows from `new_events` without an event loop, the window is never created and egui panics "the user callback was never called", killing Zenv (task 14, `C:\zenv-dev\logs\zenv.log`). The tray panel uses `show_viewport_deferred` with shared state instead.
+G-017 2026-11-23 Tried syntect colours on a 1 MB file in the native editor (egui TextEdit): ~13 ms per keystroke per 100 KB (500 KB: 64 ms) and 2.6 s to open 1 MB (release, task 15 `typing_frame_time_by_file_size`); colour only up to 100 KB (`COLOUR_MAX`).
+G-018 2026-11-23 Do not judge egui frame times from an egui_kittest Harness: it always turns accesskit on (1 MB file: 170 ms vs 15 ms); time `Context::run_ui` + `tessellate` on a bare Context (task 15).
+G-019 2026-11-23 Do not expect UI Automation / screen readers in a second egui window: eframe 0.37 (glow) calls `init_accesskit` only for the root viewport (`glow_integration.rs` ~382), so Studio and the tray panel have no tree; drive them by keyboard in device tests (task 15).
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).
 

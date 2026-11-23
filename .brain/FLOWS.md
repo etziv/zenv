@@ -49,9 +49,23 @@ Rules: the program belongs to its Studio window (`studio_owner`); closing the wi
 History:
 - 2026-11-09 adopted
 
+## F-007 Studio editor: open, edit and save a project file
+Trigger: Open in Studio in the app panel or its actions menu (React `EditButtons`; native `pages/apps/panel.rs`, `grid::actions_menu` -> `Action::OpenStudio`).
+1. Window: React `studio_window::show` (one Tauri window per app); native `studio::Windows.open` (one deferred egui viewport per app, G-016).
+2. Files: `project_files::list` per opened folder (`FileTree` / `Tree.toggle`), refreshed every 5 s and on window focus; new file/folder via `project_files::create`.
+3. Open: `project_files::read` (UTF-8, <= 2 MB, `.env` read-only); native keeps CRLF files as LF in the buffer (`Doc.load`) and writes CRLF back.
+4. Save (Ctrl+S): `project_files::write` with the mtime it opened; a changed file fails with Conflict -> banner Load theirs (`Doc.reload`) / Keep mine (write without the check).
+5. Outside edits: every 1.5 s `project_files::stat`; a clean file reloads, a dirty one shows the conflict banner (`Doc.poll_disk`).
+6. Format: gofmt/rustfmt/ruff through `Core.format_code` (Shift+Alt+F, format on save); a missing tool offers `Core.install_formatter`. React also runs Prettier in the WebView; native does not.
+7. Go to file (Ctrl+P): `project_files::search` 120 ms after typing (`QuickOpen`).
+8. Leaving: closing a Studio window, Quit from the tray, or closing the main window without a tray asks when files are unsaved (`Studio.guard_close`, `Windows.ask_quit`).
+Rules: paths never leave the project root (`project_files::parts`); native colours (syntect, Dark+) only for files <= 100 KB with lines <= 2 KB, re-coloured per changed line (`Highlight.update`); files > 1 MB or with a line > 40 KB open read-only.
+History:
+- 2026-11-23 task 15: native Studio window, tree, editor, Go to file (M20 step 8a)
+
 ## F-005 Load a saved Claude Code session
 Trigger: History in the chat header.
-1. `chat_sessions` -> `sessions`: lists `<id>.jsonl` in Claude Code's folder for the project (`sessions_dir`), titles via `title_of` (last 64 KB).
+1. `chat_sessions` -> `sessions`: lists `<id>.jsonl` in Claude Code's folder for the project (`sessions_dir`), titles via `studio_history::title_of` (last 64 KB).
 2. Picking one: `chat_history` -> `transcript` -> `transcript_lines` walks `parentUuid` from the last message (current branch) and returns prompts and trimmed messages.
 3. The UI shows them (`chatReducer` "history") and keeps the session id; the next message resumes it with `--resume`.
 History:
@@ -59,7 +73,7 @@ History:
 
 ## F-006 Open an app on the tailnet
 Trigger: Open on tailnet in the app panel (`TailnetPanel`), optionally with an own name.
-1. `Core.tailnet_open` reads Tailscale (`status`); a Service name must pass `valid_service` and `service_problem` (tagged host, HTTPS on).
+1. `Core.tailnet_open` reads Tailscale (`status`); a Service name must pass `valid_service` and `tailnet::service_problem` (tagged host, HTTPS on).
 2. A loopback port is reserved in `tailnet_apps` (with the Service name) and the app's servers are re-applied (`Core.servers_of`); the
    port accepts only this computer's names and the app's Service name (`hosts_for`).
 3. `tailscale serve --tcp=<port>` (port mode) or `tailscale serve --service=svc:<name> --https=443` to that port.
@@ -68,4 +82,5 @@ Trigger: Open on tailnet in the app panel (`TailnetPanel`), optionally with an o
    `tailnet_apps` read) saves the new names and re-applies the web servers; nothing runs while no app is open or Tailscale is offline.
 History:
 - 2026-11-09 adopted
+- 2026-11-19 task 13: native panel `pages/apps/tailnet.rs` repeats the tagged-host/HTTPS check before it offers the Service name
 - 2026-11-09 task 3: names followed in the background, not only when the tailnet panel is open
