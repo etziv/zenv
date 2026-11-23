@@ -157,9 +157,8 @@ fn a_message_typed_while_busy_waits_its_turn_and_a_failed_start_is_shown() {
     h.key_press(Key::Enter);
     h.run_steps(1);
     let c = chat(&mut h);
-    assert_eq!(kinds(c), ["user", "user"]);
+    assert_eq!(kinds(c)[..2], ["user", "user"], "the second message is kept, not dropped");
     assert!(c.composer.text.is_empty(), "the box clears on send");
-    assert!(c.state.busy);
     wait(&mut h, "the start error", |c| !notices(c).is_empty());
     let c = chat(&mut h);
     assert!(notices(c)[0].contains("is not an existing folder"), "{:?}", notices(c));

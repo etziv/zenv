@@ -1,9 +1,3 @@
-// Runs a command with the build toolchain on PATH.
-//
-// Rust's x86_64-pc-windows-gnu target needs a MinGW-w64 GCC (for bundled
-// SQLite) and windres (for Tauri's Windows resources). Point ZENV_MINGW_BIN
-// at its bin directory, or rely on the default below. With an MSVC toolchain
-// nothing needs to be added and this script just forwards the command.
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -20,7 +14,6 @@ else if (process.env.ZENV_MINGW_BIN) {
 }
 const cargoBin = path.join(homedir(), ".cargo", "bin");
 if (existsSync(cargoBin)) extra.push(cargoBin);
-extra.push(path.resolve("node_modules", ".bin"));
 
 const [cmd, ...args] = process.argv.slice(2);
 if (!cmd) {

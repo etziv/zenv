@@ -1,8 +1,8 @@
 # Zenv
 
 A Windows local development environment manager: runtimes, web servers,
-databases and local sites from one desktop app. Built with Rust + Tauri 2,
-React, TypeScript, Vite, Tailwind CSS and shadcn/ui.
+databases and local sites from one desktop app. Built in Rust with an
+egui/eframe UI (no WebView).
 
 - Architecture and module plan: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Verified Windows compatibility per component: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
@@ -37,8 +37,9 @@ Not built yet: Caddy as a front server; managed installers for servers and datab
 
 ## Requirements
 
-- Windows 10/11 x64 with WebView2
-- Node.js 22+
+- Windows 10/11 x64
+- Node.js 22+ (build scripts only)
+- NSIS 3 for the installer (`ZENV_MAKENSIS` points at `makensis.exe` if it is not in a standard place)
 - Rust (stable). With the `x86_64-pc-windows-gnu` toolchain you also need a
   MinGW-w64 GCC that provides `gcc` and `windres` (see COMPATIBILITY.md).
   Set `ZENV_MINGW_BIN` to its `bin` folder. MSVC toolchains need nothing extra.
@@ -46,12 +47,10 @@ Not built yet: Caddy as a front server; managed installers for servers and datab
 ## Commands
 
 ```powershell
-npm install
-npm run tauri dev                 # run the app
-npm run tauri build               # NSIS installer
-npm test                          # frontend unit tests
-npm run typecheck
+node scripts/with-toolchain.mjs cargo run --manifest-path src-tauri/Cargo.toml -p zenv-native   # run the app
+npm run installer                 # release build + NSIS installer
 npm run test:rust                 # core unit tests
+node scripts/with-toolchain.mjs cargo test --manifest-path src-tauri/Cargo.toml -p zenv-native -j 1   # UI tests
 $env:ZENV_TEST_APACHE_ROOT = "C:\path\to\Apache24"
 $env:ZENV_TEST_MYSQL_ROOT = "C:\path\to\mysql"       # also ZENV_TEST_POSTGRES_ROOT, ZENV_TEST_REDIS (';'-separated)
 $env:ZENV_TEST_NGINX_ROOT = "C:\path\to\nginx"
@@ -62,7 +61,7 @@ npm run test:e2e                  # real Apache / PHP / FrankenPHP tests
 
 ## Installing
 
-`npm run installer` builds it and puts it at `installer/Zenv-setup.exe` (the bundle itself is `src-tauri/target/release/bundle/nsis/Zenv_<version>_x64-setup.exe`).
+`npm run installer` builds `zenv.exe` in release and puts the installer at `installer/Zenv-setup.exe`.
 It installs for the current user (no administrator rights) into `C:\zenv` by
 default, which is also Zenv's home; choosing another folder (for example
 `D:\zenv`) makes that folder the home. Drive roots, Windows and Program Files
@@ -71,9 +70,9 @@ are refused. Silent install: `Zenv-setup.exe /S /D=D:\zenv`.
 Uninstalling removes the app files only. `bin`, `data`, `etc`, `logs`, `dev`,
 `backups` and `zenv.db` are kept, so reinstalling picks everything up again.
 
-The installer is Tauri's NSIS template with one change (the default folder),
-in `src-tauri/windows/installer.nsi`, plus `src-tauri/windows/hooks.nsh`.
-After upgrading `@tauri-apps/cli`, run `npm run check:nsis`.
+The installer script is `installer/zenv.nsi`. It keeps the registry keys of the
+earlier Tauri installer, so it upgrades an existing install in place (and
+removes the Tauri version's `WebView2Loader.dll` and WebView data).
 
 ## Data and safety
 

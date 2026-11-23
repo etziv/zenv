@@ -342,7 +342,13 @@ fn exit_reason(code: u32) -> String {
 fn ensure_safe_to_elevate(exe: &Path) -> AppResult<()> {
     use crate::platform::FolderAccess;
     let dir = exe.parent().unwrap_or(exe);
-    for target in [dir, exe] {
+    let files: Vec<PathBuf> = std::fs::read_dir(dir)
+        .ctx(|| format!("reading {}", dir.display()))?
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
+        .map(|e| e.path())
+        .collect();
+    for target in std::iter::once(dir).chain(files.iter().map(PathBuf::as_path)) {
         let problem = match crate::platform::folder_access(target)? {
             FolderAccess::Private => continue,
             FolderAccess::Shared(_) => "other accounts on this computer can change it",
@@ -543,5 +549,23 @@ mod tests {
             assert_eq!(code, 10, "{bad}");
         }
         assert_eq!(std::fs::read_to_string(&hosts).unwrap(), "original\n", "file untouched");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn elevation_is_refused_when_another_account_can_change_a_file_next_to_the_exe() {
+        let dir = std::env::temp_dir().join(format!("zenv-elevate-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        crate::platform::make_private(&dir).unwrap();
+        let exe = dir.join("zenv.exe");
+        let dll = dir.join("dwmapi.dll");
+        std::fs::write(&exe, "exe").unwrap();
+        std::fs::write(&dll, "dll").unwrap();
+        ensure_safe_to_elevate(&exe).expect("a private folder may elevate");
+        let granted = std::process::Command::new("icacls").arg(&dll).args(["/grant", "*S-1-1-0:(M)"]).output().unwrap();
+        assert!(granted.status.success());
+        let err = ensure_safe_to_elevate(&exe).expect_err("a file others can change must block elevation").to_string();
+        assert!(err.contains("dwmapi.dll"), "{err}");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

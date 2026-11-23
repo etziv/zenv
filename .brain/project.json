@@ -9,14 +9,6 @@
       "run": "node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml"
     },
     {
-      "name": "lint",
-      "run": "npm run typecheck"
-    },
-    {
-      "name": "test",
-      "run": "npm test"
-    },
-    {
       "name": "test-rust",
       "run": "node scripts/with-toolchain.mjs cargo test --manifest-path src-tauri/Cargo.toml -p zenv-core -j 1"
     },

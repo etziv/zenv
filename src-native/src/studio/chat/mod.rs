@@ -702,6 +702,11 @@ mod tests {
         c.poll(&ctx);
         c.options.mode = Some(PermissionMode::Manual);
         c.end();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while lock(&c.shared).live.is_some() {
+            assert!(std::time::Instant::now() < deadline, "the chat worker never ended the old program");
+            std::thread::yield_now();
+        }
         lock(&c.shared).live = Some(conn::Live::running(c.generation, c.options.clone()));
         c.poll(&ctx);
         assert_eq!(c.options.mode, Some(PermissionMode::Manual), "the old program's report must not undo the new choice");

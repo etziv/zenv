@@ -12,6 +12,9 @@ use zenv_native::app::ZenvApp;
 const IDENTIFIER: &str = "dev.zenv.desktop";
 
 fn main() {
+    if let Some(code) = zenv_core::domain_manager::hosts::run_helper_from_args() {
+        std::process::exit(code);
+    }
     if let Err(e) = run() {
         platform::show_fatal_error("Zenv failed to start", &e);
         std::process::exit(1);
@@ -19,6 +22,11 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let id: Vec<u16> = IDENTIFIER.encode_utf16().chain([0]).collect();
+        unsafe { windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(id.as_ptr()) };
+    }
     let app_local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_default().join(IDENTIFIER);
     let paths = AppPaths::new(paths::resolve_home(&app_local));
     paths.ensure().map_err(|e| e.to_string())?;

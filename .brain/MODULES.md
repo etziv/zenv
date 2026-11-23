@@ -36,25 +36,26 @@ Real Service proven 2026-11-09: `svc:vaultwarden` opened from another tailnet de
 
 ### M14-M15 Studio editor and terminals
 Accept: files confined to the project root, save refuses outside changes, formatters per language, terminals end with their window.
-Test: `project_files`, `code_format`, `studio` unit tests; Vitest `format`, `fileIcons`.
+Test: `project_files`, `code_format`, `studio` unit tests; native `tests/studio*.rs` (Vitest `format`, `fileIcons` removed with React, task 18).
 
 ### M16 Studio chat
 Accept: a prompt streams an answer; permission requests show Allow/Always/Deny; model/effort/mode/settings apply on the next message;
 pasted images/files reach Claude; MCP status/toggle work; a saved session loads and continues. Test: `studio_chat` / `studio_history`
-unit tests (incl. real-session read `reads_real_sessions`), Vitest `model`, `options`, `Markdown`; protocol probes against the real CLI.
+unit tests (incl. real-session read `reads_real_sessions`), native `tests/chat*.rs` and `studio::chat` unit tests (Vitest removed with React, task 18); protocol probes against the real CLI.
 Open: an end-to-end run in the Studio window (not automated).
 
 ### M18 tray, thumbnails, windows
 Accept: tray panel lists services; thumbnails render through headless Edge in a sandbox. Test: `thumbnails` unit tests; the tray has no automated test.
 
 ### M20 Native UI (egui) without WebView
-Chosen by the boss 2026-11-18, started in task 13 ([D-021](DECISIONS.md#d-021-pure-rust-ui-with-eguieframe-instead-of-tauri--webview-chosen-not-started)).
+Chosen by the boss 2026-11-18, started in task 13 ([D-021](DECISIONS.md#d-021-pure-rust-ui-with-eguieframe-instead-of-tauri--webview)).
 Plan: new crate `src-native/` (bin `zenv-native` until step 9, then `zenv`) on `src-tauri/core`; dev builds use `ZENV_HOME=C:\zenv-dev` so the installed Tauri Zenv keeps
 running. Crates (versions checked 2026-11-18, recheck at start): eframe/egui/egui_extras(syntect)/egui_kittest 0.37, egui_commonmark 0.26,
 alacritty_terminal 0.26 (own widget; egui_term is stuck on egui 0.31), tray-icon 0.26.1, rfd 0.18; Lucide icon font vendored (ISC);
 single instance by a Windows mutex; Studio preview opens in the default browser; NSIS script without tauri-cli; Vitest -> Rust + kittest.
 Order: 1 shell, theme, dashboard (spike) -> 2 web servers, services -> 3 apps -> 4 runtimes, installers -> 5 tools (AI routers, tailnet,
-Docker) -> 6 logs, settings -> 7 tray, windows -> 8 Studio: 8a files + editor (task 15), 8b terminals, 8c chat -> 9 installer, remove Tauri and React.
+Docker) -> 6 logs, settings -> 7 tray, windows -> 8 Studio: 8a files + editor (task 15), 8b terminals, 8c chat -> 9 installer, remove Tauri and React. Step 9 done in task 18
+(2026-11-23): bin `zenv`, own NSIS installer (`installer/zenv.nsi`), Tauri shell and React deleted, verify without tsc/Vitest.
 Risk gates (at the spike unless named): builds and opens on `x86_64-pc-windows-gnu` (else glow renderer, then msvc); idle private memory
 <= 150 MB with the dashboard (else glow + smaller font atlas); the boss accepts the dashboard look against DESIGN.md (else restyle first);
 step 8 terminal runs `claude`, vim, truecolor, resize, paste (else open Windows Terminal); editor typing <= 16 ms/frame on a 1 MB file

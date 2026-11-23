@@ -34,13 +34,13 @@ Only components with a verified installation provider are offered for install
 
 ## Build toolchain note
 
-This machine's Rust is `x86_64-pc-windows-gnu` without MSVC. Tauri's resource
-compiler needs `windres`, and bundled SQLite needs a C compiler, so the build
+This machine's Rust is `x86_64-pc-windows-gnu` without MSVC. The exe's resources
+(icon, version info, compiled by `embed-resource`) need `windres`, and bundled SQLite needs a C compiler, so the build
 uses a portable WinLibs GCC (MSVCRT, matching Rust's windows-gnu target):
 
 ```
 ZENV_MINGW_BIN=D:\DevCache\toolchains\winlibs-gcc16-msvcrt\mingw64\bin
 ```
 
-`scripts/with-toolchain.mjs` prepends this directory to PATH for `npm run tauri`
+`scripts/with-toolchain.mjs` prepends this directory to PATH for `npm run installer`
 and `npm run test:rust`. An MSVC toolchain works too; then the variable is not needed.
