@@ -38,20 +38,22 @@ History:
 - 2026-11-09 adopted
 
 ## F-004 Studio chat: a prompt to Claude Code
-Trigger: the boss sends a message in the Claude tab (`Composer` -> `ClaudeChat`).
-1. First message (or after settings changed between turns, `sameOptions`): `chat_open` -> `Core.studio_open_chat` starts `claude -p`
-   in stream-json (`Core.claude_command`) with model, effort, mode and `--settings` from the composer.
-2. `chat_send` -> `Core.studio_chat_send`: `prompt_content` turns pasted images/text/files into blocks (other files saved under the attachments folder).
-3. Each output line is trimmed by `shape` (text deltas, messages, permission requests, MCP status) and batched per frame in the UI (`chatReducer`).
-4. A permission card answers through `chat_answer` -> `Chats.answer` (`permission_answer`, "always" adds Claude Code's suggestion).
-5. MCP status/toggle/reconnect go through `chat_control` -> `Chats.control`.
-Rules: the program belongs to its Studio window (`studio_owner`); closing the window kills its process tree (`kill_tree`) ([D-012](DECISIONS.md#d-012-studio-chat-runs-the-official-claude-code-over-pipes)).
+Trigger: the boss sends a message in the Claude tab (React `Composer` -> `ClaudeChat`; native `chat::composer::Composer` -> `Chat.send`, first tab of `Terminals` when Claude Code is installed).
+1. First message (or after settings changed between turns: React `sameOptions`, native `conn::needs_restart`): `Core.studio_open_chat` starts `claude -p`
+   in stream-json (`Core.claude_command`) with model, effort, mode and `--settings` from the composer (React via `chat_open`; native on the chat's worker thread, `conn::spawn`, ops in order).
+2. `Core.studio_chat_send`: `prompt_content` turns pasted images/text/files into blocks (other files saved under the attachments folder). Native attachments: picker (rfd), drop, `PasteImage`, Ctrl+V of files copied in Explorer (`GetKeyState` + `arboard` file list, egui-winit sends no event for them).
+3. Each output line is trimmed by `shape` (text deltas, messages, permission requests, MCP status) and applied per frame (React `chatReducer`; native `ChatState.apply`, lines tagged with a generation so a New chat ignores the old program's late lines).
+4. A permission card answers through `Chats.answer` (`permission_answer`, "always" adds Claude Code's suggestion).
+5. MCP status/toggle/reconnect go through `Chats.control`; the answer comes back as a `control_response` matched by request id (native: `Chat.poll`, 20 s timeout).
+Rules: the program belongs to its Studio window (`studio_owner` / native owner `native-studio:<site>`); closing the window kills its process tree (`kill_tree`, native `Terminals.close_all`) ([D-012](DECISIONS.md#d-012-studio-chat-runs-the-official-claude-code-over-pipes)).
+Native Markdown is a port of React's own parser (`chat::markdown::parse`), not egui_commonmark.
 History:
 - 2026-11-09 adopted
+- 2026-11-23 task 17: native chat tab (M20 step 8c)
 
 ## F-007 Studio editor: open, edit and save a project file
 Trigger: Open in Studio in the app panel or its actions menu (React `EditButtons`; native `pages/apps/panel.rs`, `grid::actions_menu` -> `Action::OpenStudio`).
-1. Window: React `studio_window::show` (one Tauri window per app); native `studio::Windows.open` (one deferred egui viewport per app, G-016).
+1. Window: React `studio_window::show` (one Tauri window per app); native `studio::Windows.open` (one deferred egui viewport per app, G-016; at most 1440x900 and 90% x 80% of the screen, centred on the main window, `placement`).
 2. Files: `project_files::list` per opened folder (`FileTree` / `Tree.toggle`), refreshed every 5 s and on window focus; new file/folder via `project_files::create`.
 3. Open: `project_files::read` (UTF-8, <= 2 MB, `.env` read-only); native keeps CRLF files as LF in the buffer (`Doc.load`) and writes CRLF back.
 4. Save (Ctrl+S): `project_files::write` with the mtime it opened; a changed file fails with Conflict -> banner Load theirs (`Doc.reload`) / Keep mine (write without the check).
@@ -62,9 +64,10 @@ Trigger: Open in Studio in the app panel or its actions menu (React `EditButtons
 Rules: paths never leave the project root (`project_files::parts`); native colours (syntect, Dark+) only for files <= 100 KB with lines <= 2 KB, re-coloured per changed line (`Highlight.update`); files > 1 MB or with a line > 40 KB open read-only.
 History:
 - 2026-11-23 task 15: native Studio window, tree, editor, Go to file (M20 step 8a)
+- 2026-11-23 task 17: Studio window sized to the screen and placed over the main window (qa: it opened below a 1080 px screen)
 
 ## F-008 Studio terminal: run Claude Code, Codex or PowerShell in the app's folder
-Trigger: the terminal panel of a Studio window (first tab on open; `+` menu; Ctrl+` / the PanelRight button shows or hides it).
+Trigger: the terminal panel of a Studio window (`+` menu, the chat palette's terminal rows; PowerShell is the first tab only when Claude Code is not installed, else the chat F-004 is; Ctrl+` / the PanelRight button shows or hides the panel).
 1. Agents: `Core.studio_agents` (React `TerminalPanel`, native `Terminals.refresh_agents`) resolves each program on the app's PATH (`studio::resolve`).
 2. Open: `Core.studio_open_terminal` checks the agent and screen, builds the env (`studio_env`) and starts it in a ConPTY (`Terminals::open`, max 16) in the project root; Claude Code gets `--append-system-prompt` with `studio_context`.
 3. Output: the reader thread hands bytes to the window's sink: React writes them into xterm.js; native feeds `Screen` (alacritty_terminal grid + vte parser) and repaints.
@@ -73,16 +76,19 @@ Trigger: the terminal panel of a Studio window (first tab on open; `+` menu; Ctr
 6. Exit: the program's end shows "[name ended (exit code N). Press Enter to start it again.]"; Enter starts it again on a clean screen.
 7. Close: a tab's close ends its program (`Terminals::close`); closing the window ends all of the window's (`close_owned_by`); quitting Zenv ends every one (`close_all`).
 Rules: only known programs run, always in the project root; a terminal belongs to the window that opened it (owner check on every call).
+The empty editor closes so the terminal takes the full width until a file opens (boss 2026-11-06: "kasih default kosong workspace editor dan bisa disilang, jika disilang maka claude akan full screen").
 History:
 - 2026-11-23 task 16: native terminal panel and widget (M20 step 8b)
+- 2026-11-23 task 17: the chat tab comes first when Claude Code is installed
 
 ## F-005 Load a saved Claude Code session
 Trigger: History in the chat header.
 1. `chat_sessions` -> `sessions`: lists `<id>.jsonl` in Claude Code's folder for the project (`sessions_dir`), titles via `studio_history::title_of` (last 64 KB).
 2. Picking one: `chat_history` -> `transcript` -> `transcript_lines` walks `parentUuid` from the last message (current branch) and returns prompts and trimmed messages.
-3. The UI shows them (`chatReducer` "history") and keeps the session id; the next message resumes it with `--resume`.
+3. The UI shows them (React `chatReducer` "history", native `ChatState::history` via `Chat.load_session`) and keeps the session id; the next message resumes it with `--resume`.
 History:
 - 2026-11-09 adopted
+- 2026-11-23 task 17: native History menu (`Chat.header`)
 
 ## F-006 Open an app on the tailnet
 Trigger: Open on tailnet in the app panel (`TailnetPanel`), optionally with an own name.

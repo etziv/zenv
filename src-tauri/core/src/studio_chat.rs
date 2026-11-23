@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use base64::Engine;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::app_core::Core;
@@ -52,7 +52,7 @@ pub type ChatSink = Arc<dyn Fn(String) + Send + Sync>;
 /// what Claude Code suggests for "always allow").
 pub(crate) type Pending = Arc<Mutex<HashMap<String, (Value, Value)>>>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Effort {
     Low,
@@ -74,7 +74,7 @@ impl Effort {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PermissionMode {
     Manual,
@@ -99,7 +99,7 @@ impl PermissionMode {
 }
 
 /// How Claude Code starts; None keeps the user's own Claude Code settings.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatOptions {
     /// An alias (`opus`, `sonnet[1m]`, ...) or a full model name.
@@ -547,6 +547,7 @@ impl Core {
     /// Code offers: its answer to `initialize`, which costs no tokens.
     pub fn studio_chat_catalog(&self, site_id: &str) -> AppResult<Catalog> {
         let (mut cmd, _) = self.claude_command(site_id)?;
+        cmd.args(["--setting-sources", "user", "--strict-mcp-config"]);
         cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
         let mut child = cmd.spawn().map_err(|e| AppError::Platform(format!("cannot start Claude Code: {e}")))?;
         let mut stdin = child.stdin.take().ok_or_else(|| AppError::Platform("Claude Code: no input pipe".into()))?;

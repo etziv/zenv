@@ -81,6 +81,7 @@ pub mod panel {
     pub const MUTED: Color32 = Color32::from_rgb(0x8a, 0x90, 0x8e);
     pub const LED: Color32 = Color32::from_rgb(0x3e, 0xe8, 0xa0);
     pub const LED_FAIL: Color32 = Color32::from_rgb(0xff, 0x5a, 0x4a);
+    pub const AMBER: Color32 = Color32::from_rgb(0xfb, 0xbf, 0x24);
 }
 
 pub const RADIUS: u8 = 6;

@@ -280,7 +280,7 @@ fn wait(h: &mut Harness<'static, Terminals>, what: &str, done: impl Fn(&Terminal
 }
 
 fn text(t: &Terminals) -> String {
-    t.tabs.iter().find(|x| x.key == t.active).map(|x| x.term.lock().text()).unwrap_or_default()
+    t.tabs.iter().find(|x| x.key == t.active).and_then(|x| x.term()).map(|x| x.lock().text()).unwrap_or_default()
 }
 
 fn typed(h: &mut Harness<'static, Terminals>, line: &str) {
@@ -308,12 +308,12 @@ fn powershell_runs_resizes_exits_and_restarts() {
     assert_eq!(h.state().tabs[0].phase(), Phase::Running);
     typed(&mut h, "echo (\"zenv-\" + 6*7)");
     wait(&mut h, "the echo", |t| text(t).contains("zenv-42"));
-    let cols = h.state().tabs[0].term.lock().size().0;
+    let cols = h.state().tabs[0].term().unwrap().lock().size().0;
     typed(&mut h, "echo \"w=$($Host.UI.RawUI.WindowSize.Width)\"");
     wait(&mut h, "the width", |t| text(t).contains(&format!("w={cols}")));
     h.set_size(egui::vec2(1200.0, 500.0));
     h.step();
-    let wider = h.state().tabs[0].term.lock().size().0;
+    let wider = h.state().tabs[0].term().unwrap().lock().size().0;
     assert!(wider > cols);
     typed(&mut h, "cls; echo \"w=$($Host.UI.RawUI.WindowSize.Width)\"");
     wait(&mut h, "the new width", |t| text(t).contains(&format!("w={wider}")));
@@ -343,7 +343,7 @@ fn a_flood_of_terminal_queries_does_not_freeze_the_window() {
     );
     wait(&mut h, "the prompt", |t| text(t).contains("PS "));
     typed(&mut h, "[Console]::Write(\"$([char]27)[c$([char]27)[6n\" * 100000); echo flood-$(2*21)");
-    let screen = h.state().tabs[0].term.screen.clone();
+    let screen = h.state().tabs[0].term().unwrap().screen.clone();
     let start = Instant::now();
     loop {
         if let Ok(s) = screen.try_lock() {
@@ -384,7 +384,7 @@ fn plus_menu_is_compact_and_adds_a_tab() {
     );
     wait(&mut h, "the agents", |t| !t.agents.is_empty() && !t.tabs.is_empty());
     let first = h.state().tabs.len();
-    h.get_by_label("New terminal").click();
+    h.get_by_label("New tab").click();
     wait(&mut h, "the menu", |_| true);
     h.run_steps(2);
     let item = h.get_by_label("PowerShell");

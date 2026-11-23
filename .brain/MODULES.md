@@ -62,3 +62,5 @@ step 8 terminal runs `claude`, vim, truecolor, resize, paste (else open Windows 
 colours only up to 100 KB with lines <= 2 KB (minified files: 115 ms per key at 20 KB), plain up to 1 MB (14.8 ms median), read-only above 1 MB or a 40 KB line ([G-017](DECISIONS.md)); Studio with a 1 MB file open: 128 MB private.
 Gate 8b result (2026-11-23, task 16): passed in the real window: Claude Code (colours, keys, Esc, mouse), vim, truecolor, resize, paste;
 full 203x62 screen 0.6-0.9 ms per frame (release median); terminals end with their window. Own widget on `alacritty_terminal` 0.26 (F-008).
+Step 8c (2026-11-23, task 17): chat tab in the native Studio (F-004, F-005), first tab when Claude Code is installed; Markdown is a port of React's parser
+(no egui_commonmark). 1,000-item chat 1.1 ms per frame, streaming into one 60 KB message up to 17.4 ms (release, task 17 `long_conversation_frame_time`).

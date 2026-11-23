@@ -90,6 +90,13 @@ DESIGN.md tokens; the React UI is the visual reference until Tauri goes (M20 ste
 Why: the boss wants the same app, only without the WebView.
 Source: the boss, 2026-11-18, task 13 ("untuk uinya design layoutnya harus tetap sama lo jangan berubah").
 
+## D-023 Studio chat trusts the app's folder: no folder-trust question before Claude Code runs [active] 2026-11-23
+Decision: a message in the Studio chat starts `claude -p` in the app's project folder with its project hooks and MCP servers, without
+asking whether the folder is trusted; only the model-list fetch (`studio_chat_catalog`) runs isolated (`--setting-sources user --strict-mcp-config`).
+Why: a folder is only in Studio after the boss made it a Zenv app, which already says he trusts it (security finding, task 17, accepted).
+Source: the boss, 2026-11-23, task 17 REVIEW card ("percayai langsung aja, kan sudah dijadikan app juga").
+Ask: percayai folder, trust prompt chat, hooks proyek jalan
+
 ## Gotchas (max 30 lines; delete when no longer true)
 G-001 2026-11-04 Do not put `/D=` before other NSIS flags: it must be last (`/S /D=C:\zenv`); the wrong order created a stray `C:\zenv R`. Leave out `/R`: it relaunches Zenv as the shell's child (G-003).
 G-002 2026-10-19 Do not expect to rewrite the hosts file: Kaspersky refuses even elevated; appending works, so the helper only appends missing lines.
@@ -110,6 +117,9 @@ G-018 2026-11-23 Do not judge egui frame times from an egui_kittest Harness: it 
 G-019 2026-11-23 Do not expect UI Automation / screen readers in a second egui window: eframe 0.37 (glow) calls `init_accesskit` only for the root viewport (`glow_integration.rs` ~382), so Studio and the tray panel have no tree; drive them by keyboard in device tests (task 15).
 G-020 2026-11-23 Do not judge Studio terminal colours in a Zenv started from a Claude Code shell: it inherits `NO_COLOR=1` and Claude Code draws plain text; clear `NO_COLOR` and the `CLAUDE*` variables before launching (task 16, `$env:NO_COLOR` in the tool shell).
 G-021 2026-11-23 Do not SendKeys into a Studio window right after the Alt tap that wins SetForegroundWindow: egui still sees Alt, so `.` arrives as Alt+. (PSReadLine inserted `exit`); wait ~700 ms and send only when GetForegroundWindow is Studio, else the keys land in the boss's app (task 16).
+G-022 2026-11-23 Do not use `consume_key(Modifiers::NONE, Key::Enter)` to mean "plain Enter" in egui 0.37: `matches_logically` ignores Shift when the pattern lacks it, so Shift+Enter is consumed too (chat sent instead of a new line; test `shift_enter_is_a_new_line_and_enter_sends`, task 17). Check `!i.modifiers.shift` first.
+G-023 2026-11-23 Do not combine `TextEdit::frame(..)` with `TextEdit::margin(..)` in egui 0.37: the margin is ignored when a frame is given (`text_edit/builder.rs` ~693); put the margin in the frame's `inner_margin` (task 17).
+G-024 2026-11-23 Do not query or click inside an `egui::Area` in egui_kittest right after it appeared or changed size: it is laid out a frame at the old pivot and kittest keeps that node rect for a few frames, so the click lands on nothing; step `AREA_SETTLE` (6) frames first (task 17, `tests/chat.rs`).
 G-009 2026-11-09 Do not register Windows scheduled tasks yourself: auto mode refuses it as persistence (task 3); hand the boss the command.
 G-008 2026-11-06 Do not hardcode Claude model ids: the alias `haiku` already resolved to `claude-haiku-5-5`; use the catalog (D-013).
 

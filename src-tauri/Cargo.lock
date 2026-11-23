@@ -8228,15 +8228,21 @@ name = "zenv-native"
 version = "1.0.0"
 dependencies = [
  "alacritty_terminal",
+ "arboard",
  "base64 0.22.1",
  "eframe",
  "egui_extras",
  "egui_kittest",
+ "fancy-regex",
  "image",
  "rfd 0.18.0",
+ "serde",
+ "serde_json",
  "syntect",
+ "time",
  "tracing",
  "tray-icon",
+ "windows-sys 0.61.2",
  "zenv-core",
 ]
 
