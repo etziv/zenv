@@ -8109,6 +8109,7 @@ dependencies = [
  "image",
  "rfd 0.18.0",
  "tracing",
+ "tray-icon",
  "zenv-core",
 ]
 

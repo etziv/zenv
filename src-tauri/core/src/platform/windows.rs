@@ -207,6 +207,76 @@ pub fn signal_named_event(name: &str) -> AppResult<()> {
     Ok(())
 }
 
+pub struct InstanceEvent(HANDLE);
+
+unsafe impl Send for InstanceEvent {}
+unsafe impl Sync for InstanceEvent {}
+
+impl InstanceEvent {
+    pub fn wait(&self) -> bool {
+        use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
+        use windows_sys::Win32::System::Threading::{WaitForSingleObject, INFINITE};
+        unsafe { WaitForSingleObject(self.0, INFINITE) == WAIT_OBJECT_0 }
+    }
+}
+
+impl Drop for InstanceEvent {
+    fn drop(&mut self) {
+        unsafe { CloseHandle(self.0) };
+    }
+}
+
+pub fn single_instance(name: &str) -> AppResult<Option<InstanceEvent>> {
+    use windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS;
+    use windows_sys::Win32::System::Threading::CreateEventW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{AllowSetForegroundWindow, ASFW_ANY};
+    let name_w = wide(name);
+    unsafe {
+        let handle = CreateEventW(std::ptr::null(), 0, 0, name_w.as_ptr());
+        if handle.is_null() {
+            return Err(last_error(&format!("CreateEventW({name})")));
+        }
+        if GetLastError() != ERROR_ALREADY_EXISTS {
+            return Ok(Some(InstanceEvent(handle)));
+        }
+        AllowSetForegroundWindow(ASFW_ANY);
+        let ok = SetEvent(handle);
+        CloseHandle(handle);
+        if ok == 0 {
+            return Err(last_error(&format!("SetEvent({name})")));
+        }
+        Ok(None)
+    }
+}
+
+pub fn work_area(x: i32, y: i32) -> Option<[i32; 4]> {
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+    unsafe {
+        let monitor = MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST);
+        let mut info: MONITORINFO = std::mem::zeroed();
+        info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        if monitor.is_null() || GetMonitorInfoW(monitor, &mut info) == 0 {
+            return None;
+        }
+        let r = info.rcWork;
+        Some([r.left, r.top, r.right, r.bottom])
+    }
+}
+
+pub fn find_window(title: &str) -> Option<isize> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{FindWindowW, GetWindowThreadProcessId};
+    let title_w = wide(title);
+    unsafe {
+        let hwnd = FindWindowW(std::ptr::null(), title_w.as_ptr());
+        let mut pid = 0u32;
+        if hwnd.is_null() || GetWindowThreadProcessId(hwnd, &mut pid) == 0 || pid != std::process::id() {
+            return None;
+        }
+        Some(hwnd as isize)
+    }
+}
+
 /// Runs `exe params` elevated through the UAC prompt and waits for it.
 /// Returns its exit code; a declined prompt is `ElevationDeclined`.
 pub fn run_elevated(exe: &std::path::Path, params: &str) -> AppResult<u32> {
@@ -762,6 +832,27 @@ mod tests {
         assert_eq!(crate::platform::secure_folder(&home).unwrap(), crate::platform::FolderAccess::Private);
         assert_eq!(folder_access(&home.join("bin").join("tool.exe")).unwrap(), crate::platform::FolderAccess::Private);
         assert!(std::fs::read(home.join("bin").join("tool.exe")).is_ok(), "the user keeps access");
+    }
+
+    #[test]
+    fn a_second_instance_signals_the_first() {
+        let name = format!("zenv_test_instance_{}", std::process::id());
+        let first = single_instance(&name).unwrap().expect("first launch owns the event");
+        assert!(single_instance(&name).unwrap().is_none());
+        assert!(first.wait());
+        drop(first);
+        assert!(single_instance(&name).unwrap().is_some());
+    }
+
+    #[test]
+    fn work_area_of_the_primary_monitor_is_not_empty() {
+        let [left, top, right, bottom] = work_area(0, 0).unwrap();
+        assert!(right > left && bottom > top);
+    }
+
+    #[test]
+    fn find_window_ignores_missing_titles() {
+        assert!(find_window("zenv_test_window_that_does_not_exist").is_none());
     }
 
     #[test]

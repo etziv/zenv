@@ -118,12 +118,29 @@ pub fn service_key(id: &str) -> String {
 pub const START_APPS: &str = "apps:start";
 pub const STOP_ALL: &str = "services:stop-all";
 
+pub fn start_apps_task() -> Task {
+    Task::reporting(START_APPS, "Couldn't start the apps' services", |c| Ok(start_notes(&c.start_services_for_apps()?)))
+}
+
+pub fn stop_all_task() -> Task {
+    Task::reporting(STOP_ALL, "Couldn't stop the services", |c| Ok(stop_notes(&c.stop_all_services()?)))
+}
+
+pub fn switch_task(id: &str, label: String, running: bool) -> Task {
+    let id = id.to_owned();
+    if running {
+        Task::new(service_key(&id), label, move |c| c.stop_service(&id).map(|_| ()))
+    } else {
+        Task::new(service_key(&id), label, move |c| c.start_service(&id).map(|_| ()))
+    }
+}
+
 fn start_apps_button(ui: &mut Ui, needed: &[NeededService], busy: &[String], out: &mut Vec<Action>) {
     let pending = busy.iter().any(|k| k == START_APPS);
     let label = start_apps_label(needed, pending);
     let r = widgets::button(ui, Kind::Primary, Some(lucide::PLAY), &label, !pending && !needed.is_empty());
     if r.clicked() {
-        out.push(Action::Run(Task::reporting(START_APPS, "Couldn't start the apps' services", |c| Ok(start_notes(&c.start_services_for_apps()?)))));
+        out.push(Action::Run(start_apps_task()));
     }
     if !needed.is_empty() {
         r.on_hover_ui(|ui| {
@@ -192,7 +209,7 @@ fn stop_all_button(ui: &mut Ui, running: usize, busy: &[String], out: &mut Vec<A
     }
     let label = if pending { "Stopping…".to_owned() } else { format!("Stop all ({running})") };
     if widgets::button(ui, Kind::Outline, Some(lucide::SQUARE), &label, !pending).clicked() {
-        out.push(Action::Run(Task::reporting(STOP_ALL, "Couldn't stop the services", |c| Ok(stop_notes(&c.stop_all_services()?)))));
+        out.push(Action::Run(stop_all_task()));
     }
 }
 
@@ -235,14 +252,7 @@ fn service_tile(
                     ));
                 }
                 if r.clicked() {
-                    let id = s.id.clone();
-                    let key = key.clone();
-                    let task = if running {
-                        Task::new(key, label, move |c| c.stop_service(&id).map(|_| ()))
-                    } else {
-                        Task::new(key, label, move |c| c.start_service(&id).map(|_| ()))
-                    };
-                    out.push(Action::Run(task.inline()));
+                    out.push(Action::Run(switch_task(&s.id, label, running).inline()));
                 }
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                     ui.add(egui::Label::new(widgets::strong(&s.name, 14.0)).truncate());

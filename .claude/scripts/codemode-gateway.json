@@ -1,0 +1,5 @@
+{
+  "upstreams": {},
+  "outputDir": "../../.brain/codemode-gateway/output",
+  "logFile": "../../.brain/codemode-gateway/logs/gateway.jsonl"
+}

@@ -19,6 +19,13 @@
       "args": [
         ".claude/scripts/figcraft-mcp.mjs"
       ]
+    },
+    "codemode-gateway": {
+      "command": "node",
+      "args": [
+        "D:/Hanif/htdocs/agent_framework/codemode-gateway/dist/index.js",
+        ".claude/scripts/codemode-gateway.json"
+      ]
     }
   }
 }

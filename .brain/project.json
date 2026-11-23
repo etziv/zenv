@@ -5,10 +5,6 @@
   "ciWaitMinutes": 5,
   "verify": [
     {
-      "name": "build",
-      "run": "npm run build"
-    },
-    {
       "name": "build-rust",
       "run": "node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml"
     },
@@ -22,11 +18,11 @@
     },
     {
       "name": "test-rust",
-      "run": "npm run test:rust"
+      "run": "node scripts/with-toolchain.mjs cargo test --manifest-path src-tauri/Cargo.toml -p zenv-core -j 1"
     },
     {
       "name": "test-native",
-      "run": "node scripts/with-toolchain.mjs cargo test --manifest-path src-tauri/Cargo.toml -p zenv-native -j 2"
+      "run": "node scripts/with-toolchain.mjs cargo test --manifest-path src-tauri/Cargo.toml -p zenv-native -j 1"
     }
   ]
 }

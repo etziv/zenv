@@ -23,10 +23,15 @@ metadata:
 >   fresh `general-purpose` agent with the screenshots, the brief and `references/distinctiveness.md` section 8.
 > - Skills it names that this kit does not have (`vectorcraft-illustration`, `effectcraft-motion`): skip them and
 >   make the asset another way. Installing anything (fonts, Playwright browsers, svgo) needs the boss's yes.
+> - Never headless (boss 2026-11-09, 2026-11-21: "gimana mau lihat"): in this kit the `figcraft` MCP draws only in the
+>   boss's FigCraft window, and a call that cannot reach it fails with the fix. Before the first node confirm the
+>   window (`inspect_ui` answers, `screenshot {window:true}` shows the app); a refused call means stop and fix, never
+>   draw elsewhere.
+> - Prototype motion (section 8) uses the DESIGN.md / direction Motion & Interaction tokens: `figcraft-build`
+>   section 7.
 > - Read only the section and the one reference you need, not the whole skill.
-> - Section 9 on Windows: no `setsid`/`xdg-open`. Open the file with
->   `Start-Process (Join-Path (Split-Path $env:FIGCRAFT_CLI) 'figcraft.exe') '<absolute path>'`, or just hand over the
->   path. As a subagent, return the path with "approval pending"; the DESIGN card is the approval.
+> - Section 9: the file is opened in the window the `figcraft` MCP is attached to (`open_file`), never by starting
+>   another `figcraft.exe`. As a subagent, return the path with "approval pending"; the DESIGN card is the approval.
 > - Section 10 is for the `frontend` skill reading the chosen frames: DESIGN.md stays the master, generated code a hint.
 
 FigCraft is an open-source, Figma-class interface design app (frames, auto layout, components and
@@ -74,9 +79,9 @@ with ToolSearch (`select:mcp__figcraft__batch,mcp__figcraft__run_command,...`) b
   (zero-based); `{"$step": n, "field": "ids/0"}` picks another field. Build whole subtrees this way.
 - Commands act on `ids` when given, else on the selection; new layers become the selection.
 - Programmatic calls never open dialogs. A failing command leaves the document unchanged.
-- **Headless vs attached**: with `figcraft-cli mcp` there is no window (screenshots render the
-  document); with `--attach <port>` the user watches the live app. File reads/writes may be
-  confined to read/write roots; a refused path returns a readable error: pick an allowed folder.
+- **Window only**: the kit's `figcraft` MCP is attached to the app the boss watches (`--attach <port>`);
+  a plain `figcraft-cli mcp` session has no window and is never used for design work. File reads/writes
+  may be confined to read/write roots; a refused path returns a readable error: pick an allowed folder.
 
 ## 1. Workflow overview
 
@@ -181,8 +186,8 @@ brand/system fixes the look.
   (`variable.createCollection {name:"Dir A", modes:["Light"]}`) with the same slash names in each:
   identical names coexist across collections and `variable.export {collections:["Dir A"],
   format:"css"}` exports one alone (both verified). Bind layers even in sketches.
-- **Build FigCraft directions sequentially, never in parallel subagents**: all would drive one
-  headless session where `page.add`/`page.duplicate` switch the current page, `open_file` the
+- **Build FigCraft directions sequentially, never in parallel subagents**: all would drive the
+  one FigCraft window where `page.add`/`page.duplicate` switch the current page, `open_file` the
   document, and concurrent calls are unverified. Code-side directions may run in parallel.
 - **Present**: verify each (section 7 steps 1–4), save and open the file (section 9), then give each
   direction a short card (name, what makes it recognisable, the metaphor reading, the risk,
@@ -379,25 +384,20 @@ A picture beats a JSON diff for aesthetics; JSON beats a picture for exact value
 
 ## 9. Show and approve (mandatory final phase)
 
-Every design ends here, after the verify loop (and after the prototype, if any). The headless
-`figcraft-cli mcp` session has no window, so the user cannot see the design until you save it and
-open the real app on it.
+Every design ends here, after the verify loop (and after the prototype, if any). The design was
+drawn in the boss's FigCraft window; it ends saved and open there.
 
 1. **Save** with `save_file {path}` (or `file.saveAs {path}`; no extension adds `.figcraft`) into
    the project directory, or the path the user named. Use a descriptive name (`login-screen.figcraft`)
    and an allowed write root. Note the full absolute path.
-2. **Open FigCraft on that file**, detached so it doesn't block:
-   `setsid figcraft /abs/path/design.figcraft >/dev/null 2>&1 &`
-   (`figcraft [FILE]` is the desktop app binary, `/usr/bin/figcraft`; the MIME type is
-   `application/x-figcraft`, so `setsid xdg-open /abs/path/design.figcraft >/dev/null 2>&1 &` works
-   too.) If the app is already bridged/open on this design (`--attach`/`--control` session), don't
-   launch another copy: the user already sees it, so just bring that file up (`file.open {path}`
-   returns the index of an already-open file instead of opening it twice).
+2. **Leave it open in his window**: `open_file {path}` in that window (figlive's own show step does
+   it; `file.open {path}` returns the index of an already-open file instead of opening it twice).
+   Never launch a second app copy, and report that the file is open there.
 3. **Stop and ask.** Give the user the full file path and ask them to accept the design or describe
    the changes. Never continue on your own: no implementation, code, asset export or handoff
    before explicit acceptance. Silence or a vague reaction is not acceptance.
 4. **Loop on changes.** Apply the requested changes, re-run the verify loop for what changed,
-   `save_file` again, reopen/refresh FigCraft on the file, and ask again. Repeat until the user
+   `save_file` again, keep it open in his window, and ask again. Repeat until the user
    accepts.
 5. **Inside a subagent** (it cannot talk to the user): do steps 1 and 2, then return the file path
    and a short summary of the design to the orchestrator, stating clearly that **user approval is

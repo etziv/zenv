@@ -1,7 +1,8 @@
 # UI review checklist (Web Interface Guidelines)
 
-Vendored from vercel-labs/web-interface-guidelines (so no network fetch per review). Review the named files against
-these rules; output grouped by file, `file:line - issue` (clickable), terse, no preamble; a clean file gets `✓ pass`.
+Vendored from vercel-labs/web-interface-guidelines (so no network fetch per review), plus the kit's motion and
+interaction audit. Review the named files against these rules; output grouped by file, `file:line - issue`
+(clickable), terse, no preamble; a clean file gets `✓ pass`.
 
 ## Accessibility
 - Icon-only buttons need `aria-label`; form controls need `<label>` or `aria-label`.
@@ -25,6 +26,25 @@ these rules; output grouped by file, `file:line - issue` (clickable), terse, no 
 - Honor `prefers-reduced-motion`. Animate only `transform`/`opacity`; never `transition: all` (list properties).
 - Correct `transform-origin`; SVG transforms on a `<g>` wrapper (`transform-box: fill-box`). Animations interruptible.
 - Autoplay >5 s needs pause/stop/hide; muted decorative loops stop under reduced motion.
+
+## Motion and interaction (kit audit, against DESIGN.md `## Motion & Interaction` and `references/app-motion.md`)
+- DESIGN.md has the section: tokens, transitions, reduced-motion rule and a table row per interaction (trigger,
+  property, duration, easing, fallback). Missing or partial: one finding, then audit against app-motion.md defaults.
+- Every row is built with its token (CSS custom property, Compose spec, Motion transition); no magic numbers
+  (`300ms`, `ease-in-out`) outside the tokens; nothing moves that the table does not list; exit faster than enter.
+- Each interactive component shows hover (pointer only), pressed, focus-visible, disabled and, where it acts,
+  loading / success / error; a state that only shifts colour by a hair counts as missing. Press never moves
+  neighbours.
+- Feedback follows the wait: nothing under 300 ms, an indicator in the control up to 1 s, a skeleton of the real
+  layout beyond; a skeleton swaps to content by crossfade; errors sit at their cause and never rely on motion alone.
+- Screen changes use one pattern per relation (container transform, shared axis, fade through) and back reverses
+  forward; dialogs and sheets come from their trigger or edge.
+- Gestures follow the finger, settle with a spring, have a tap / keyboard alternative and an undo when destructive.
+  Haptics (Android) only on confirm, reject, ticks and drag start.
+- Reduced motion: every row's fallback is what renders with `prefers-reduced-motion: reduce` / animations off;
+  loops, parallax and shimmer stop. Animations are interruptible and never block input.
+- Cite catalogue rule ids (`uiux/references/quick-reference.md` sections 2, 7, 8) in findings: `file:line -
+  exit-faster-than-enter: dialog closes in 400ms, opens in 300ms`.
 
 ## Typography
 - `…` not `...`; curly quotes `“ ”` not `"`; non-breaking spaces (`10&nbsp;MB`, `⌘&nbsp;K`, brand names).

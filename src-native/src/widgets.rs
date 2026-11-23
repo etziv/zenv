@@ -128,6 +128,10 @@ pub fn button_sm(ui: &mut Ui, kind: Kind, glyph: Option<&str>, label: &str, enab
 }
 
 pub fn button_sized(ui: &mut Ui, kind: Kind, size: Size, glyph: Option<&str>, label: &str, enabled: bool) -> Response {
+    button_wide(ui, kind, size, glyph, label, enabled, 0.0)
+}
+
+pub fn button_wide(ui: &mut Ui, kind: Kind, size: Size, glyph: Option<&str>, label: &str, enabled: bool, min_width: f32) -> Response {
     let p = palette(ui);
     let (height, pad, text_size) = match size {
         Size::Default => (32.0, 12.0, 13.5),
@@ -143,7 +147,7 @@ pub fn button_sized(ui: &mut Ui, kind: Kind, size: Size, glyph: Option<&str>, la
     let font = FontId::new(text_size, theme::medium());
     let text = ui.painter().layout_no_wrap(label.to_owned(), font, fg);
     let icon_w = if glyph.is_some() { 16.0 + 6.0 } else { 0.0 };
-    let width = pad * 2.0 + icon_w + text.size().x;
+    let width = (pad * 2.0 + icon_w + text.size().x).max(min_width);
     let sense = if enabled { Sense::click() } else { Sense::hover() };
     let (rect, r) = ui.allocate_exact_size(egui::vec2(width, height), sense);
     r.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, label));
@@ -162,7 +166,7 @@ pub fn button_sized(ui: &mut Ui, kind: Kind, size: Size, glyph: Option<&str>, la
         let line = if hovered { p.primary.gamma_multiply(0.4) } else { p.border };
         dashed_rect(painter, rect.shrink(0.5), line);
     }
-    let mut x = rect.left() + pad;
+    let mut x = rect.center().x - (icon_w + text.size().x) / 2.0;
     let fg = if kind == Kind::Dashed && hovered { p.foreground } else { fg };
     if let Some(g) = glyph {
         painter.text(egui::pos2(x + 8.0, rect.center().y), egui::Align2::CENTER_CENTER, g, FontId::new(15.0, theme::icons()), fg);

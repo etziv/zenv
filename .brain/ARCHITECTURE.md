@@ -50,9 +50,11 @@ Studio windows are labelled `studio-<site id>`; terminals and chats belong to th
 - Outside the DB: localStorage in the UI (theme, Studio layout and chat options); Claude Code's own session files are read, never written.
 
 ## Verification commands (exact; used by builders and QA)
-- build: `npm run build` (tsc + vite) and `node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml`
+- build: `node scripts/with-toolchain.mjs cargo check --manifest-path src-tauri/Cargo.toml`; the web build
+  (`npm run build`, tsc + vite) left the verify during M20 (boss 2026-11-20, approved 2026-11-23: the native UI replaces React), run it by hand after a `src/` change
 - lint: `npm run typecheck` (no ESLint/Clippy configured)
-- test: `npm test` (Vitest), `npm run test:rust` (zenv-core unit tests), `test-native` in project.json (zenv-native kittest)
+- test: `npm test` (Vitest); `cargo test ... -p zenv-core -j 1` (test-rust) and `-p zenv-native -j 1` (test-native), exact lines
+  in project.json; `-j 1` because commit memory runs out at higher parallelism on this PC (G-011)
 - other: `npm run test:e2e` with `ZENV_TEST_*` roots (real Apache/Nginx/PHP/FrankenPHP/MySQL/...); `npm run installer`
   builds `installer/Zenv-setup.exe`; `npm run check:nsis` after a Tauri CLI upgrade.
 
