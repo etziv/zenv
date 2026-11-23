@@ -12,7 +12,7 @@ Updated: 2026-11-23
 - Vaultwarden on the tailnet: live 2026-11-09 (`svc:vaultwarden`, this PC `tag:server`; reached from another device). From this PC use
   `vaultwarden.localhost` (tagged, not `autogroup:member`). DOMAIN follows the tailnet name via `D:\Hanif\vaultwarden\sync-domain.ps1` and the
   scheduled task "Vaultwarden tailnet domain" (logon + 15 min, proven 2026-11-09). `SIGNUPS_ALLOWED` false.
-- Native UI (M20, task 13, as of 2026-11-19): steps 1-6 built in `src-native/`, matched to React (D-022), qa PASS WITH NOTES, security clean, shipped with task 13. Step 7 (tray, close to tray, single instance) shipped in task 14. Step 8a (Studio window: files, editor, Go to file) built in task 15 (as of 2026-11-23). Next: 8b terminals (task 16), 8c chat.
+- Native UI (M20, task 13, as of 2026-11-19): steps 1-6 built in `src-native/`, matched to React (D-022), qa PASS WITH NOTES, security clean, shipped with task 13. Step 7 (tray, close to tray, single instance) shipped in task 14. Step 8a (Studio window: files, editor, Go to file) built in task 15, 8b (terminal panel) in task 16 (as of 2026-11-23). Next: 8c chat.
 - Studio chat: an end-to-end run in the Studio window (palette terminal screens, paste from Explorer, MCP toggle).
 
 ## Open issues

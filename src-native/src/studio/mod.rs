@@ -4,6 +4,8 @@ pub mod highlight;
 mod icon_map;
 pub mod icons;
 pub mod quick_open;
+pub mod terminal;
+pub mod terminals;
 pub mod tree;
 
 use std::collections::HashMap;
@@ -20,11 +22,15 @@ use crate::widgets::{self, ModalChoice};
 use crate::{lucide, shell};
 use editor::{Editor, Env};
 use quick_open::QuickOpen;
+use terminals::{Host, Terminals};
 use tree::Tree;
 
 const TREE_KEY: &str = "zenv.studio.tree";
 const TREE_DEFAULT: f32 = 260.0;
 const TREE_RANGE: (f32, f32) = (160.0, 520.0);
+const TERMINAL_KEY: &str = "zenv.studio.terminal";
+const TERMINAL_DEFAULT: f32 = 36.0;
+const TERMINAL_RANGE: (f32, f32) = (18.0, 70.0);
 
 pub struct Colors {
     pub panel: Color32,
@@ -85,16 +91,30 @@ pub struct Studio {
     pub tree: Tree,
     pub editor: Editor,
     pub show_tree: bool,
+    pub terminals: Terminals,
+    pub show_terminal: bool,
+    editor_open: bool,
     pub quick: Option<QuickOpen>,
     editors: Option<Editors>,
     editors_rx: Option<Receiver<Editors>>,
     notices: (std::sync::mpsc::Sender<String>, Receiver<String>),
     pub notice: Option<String>,
-    dragging: bool,
+    dragging: Option<Split>,
     ask: Option<Ask>,
     quit_files: Vec<String>,
     pub closed: bool,
     pub quit: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Split {
+    Tree,
+    Terminal,
+}
+
+enum Drag {
+    Reset,
+    To(f32),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -113,18 +133,22 @@ impl Studio {
                 ctx2.request_repaint();
             }
         });
+        let host = Host { core: core.clone(), owner: format!("native-studio:{}", site.id), site_id: site.id.clone(), viewport: viewport_id(&site.id) };
         Self {
             tree: Tree::new(&site.root),
             editor: Editor::new(ctx),
+            terminals: Terminals::new(ctx, host),
             core,
             site,
             show_tree: true,
+            show_terminal: true,
+            editor_open: true,
             quick: None,
             editors: None,
             editors_rx: Some(rx),
             notices: channel(),
             notice: None,
-            dragging: false,
+            dragging: None,
             ask: None,
             quit_files: Vec::new(),
             closed: false,
@@ -141,6 +165,7 @@ impl Studio {
     }
 
     pub fn open_file(&mut self, path: &str) {
+        self.editor_open = true;
         self.editor.open(&self.site.root, path);
     }
 
@@ -164,9 +189,16 @@ impl Studio {
             self.notice = Some(n);
         }
         self.guard_close(&ctx);
-        let (quick, files) = ui.input_mut(|i| {
-            (i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::P)), i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::B)))
+        let (quick, files, terminal) = ui.input_mut(|i| {
+            (
+                i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::P)),
+                i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::B)),
+                i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::Backtick)),
+            )
         });
+        if terminal {
+            self.toggle_terminal();
+        }
         if quick {
             self.quick = Some(QuickOpen::default());
         }
@@ -200,6 +232,13 @@ impl Studio {
                 Some(quick_open::Out::Close) => self.quick = None,
                 None => {}
             }
+        }
+    }
+
+    pub fn toggle_terminal(&mut self) {
+        self.show_terminal = !self.show_terminal;
+        if self.show_terminal {
+            self.terminals.focus();
         }
     }
 
@@ -242,7 +281,7 @@ impl Studio {
         h.label(RichText::new(widgets::tracked("STUDIO")).font(FontId::new(10.0, FontFamily::Monospace)).color(c.led));
         let (sep, _) = h.allocate_exact_size(vec2(1.0, 16.0), Sense::hover());
         h.painter().rect_filled(sep, 0.0, c.line);
-        let right_w = 3.0 * 32.0 + 4.0 * 4.0 + 18.0 + self.editor_button_width(&h) + 32.0 + 8.0;
+        let right_w = 4.0 * 32.0 + 5.0 * 4.0 + 18.0 + self.editor_button_width(&h) + 32.0 + 8.0;
         let search_w = (rect.width() * 0.3).min(360.0);
         let info_w = (rect.width() - right_w - search_w - 160.0).max(80.0);
         h.vertical(|ui| {
@@ -275,6 +314,9 @@ impl Studio {
             }
             let (sep, _) = ui.allocate_exact_size(vec2(9.0, 16.0), Sense::hover());
             ui.painter().rect_filled(Rect::from_center_size(sep.center(), vec2(1.0, 16.0)), 0.0, c.line);
+            if panel_icon_button(ui, lucide::PANEL_RIGHT, "Terminal: Claude Code (Ctrl+`)", self.show_terminal, 32.0, 16.0).clicked() {
+                self.toggle_terminal();
+            }
             if panel_icon_button(ui, lucide::PANEL_LEFT, "Files (Ctrl+B)", self.show_tree, 32.0, 16.0).clicked() {
                 self.show_tree = !self.show_tree;
             }
@@ -312,10 +354,11 @@ impl Studio {
 
     fn body(&mut self, ui: &mut Ui, c: &Colors) {
         let body = ui.available_rect_before_wrap();
-        let tree_w = ui.ctx().data_mut(|d| d.get_persisted::<f32>(Id::unique(TREE_KEY))).unwrap_or(TREE_DEFAULT).clamp(TREE_RANGE.0, TREE_RANGE.1);
+        let stored = |ui: &Ui, key: &str, default: f32, range: (f32, f32)| ui.ctx().data_mut(|d| d.get_persisted::<f32>(Id::unique(key))).unwrap_or(default).clamp(range.0, range.1);
+        let store = |ui: &Ui, key: &str, v: f32| ui.ctx().data_mut(|d| d.insert_persisted(Id::unique(key), v));
         let mut x = body.left();
         if self.show_tree {
-            let rect = Rect::from_min_size(body.min, vec2(tree_w, body.height()));
+            let rect = Rect::from_min_size(body.min, vec2(stored(ui, TREE_KEY, TREE_DEFAULT, TREE_RANGE), body.height()));
             let mut tree_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
             tree_ui.set_clip_rect(rect);
             let root_name = self.site.root.file_name().map_or_else(|| self.site.root.display().to_string(), |n| n.to_string_lossy().into_owned());
@@ -323,36 +366,73 @@ impl Studio {
                 self.open_file(&path);
             }
             x = rect.right();
-            if let Some(w) = self.splitter(ui, x, body, c) {
-                ui.ctx().data_mut(|d| d.insert_persisted(Id::unique(TREE_KEY), w));
+            match self.splitter(ui, x, body, Split::Tree, c) {
+                Some(Drag::Reset) => store(ui, TREE_KEY, TREE_DEFAULT),
+                Some(Drag::To(px)) => store(ui, TREE_KEY, (px - body.left()).clamp(TREE_RANGE.0, TREE_RANGE.1)),
+                None => {}
             }
             x += 1.0;
         }
-        let rect = Rect::from_min_max(egui::pos2(x, body.top()), body.max);
-        let mut editor_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
-        editor_ui.set_clip_rect(rect);
-        let env = Env { root: &self.site.root, core: &self.core, site_id: &self.site.id };
-        self.editor.ui(&mut editor_ui, &env);
+        let show_editor = self.editor_open || !self.show_terminal;
+        let share = stored(ui, TERMINAL_KEY, TERMINAL_DEFAULT, TERMINAL_RANGE);
+        let terminal_left = match (self.show_terminal, show_editor) {
+            (false, _) => body.right(),
+            (true, false) => x,
+            (true, true) => (body.right() - body.width() * share / 100.0).round().max(x + 2.0),
+        };
+        if show_editor {
+            let right = if self.show_terminal { terminal_left - 1.0 } else { body.right() };
+            let rect = Rect::from_min_max(egui::pos2(x, body.top()), egui::pos2(right, body.bottom()));
+            let mut editor_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
+            editor_ui.set_clip_rect(rect);
+            self.editor.dismissable = self.show_terminal;
+            self.editor.shortcuts = !(self.show_terminal && self.terminals.has_focus(ui.ctx()));
+            let env = Env { root: &self.site.root, core: &self.core, site_id: &self.site.id };
+            self.editor.ui(&mut editor_ui, &env);
+            if std::mem::take(&mut self.editor.dismissed) {
+                self.editor_open = false;
+                self.terminals.focus();
+            }
+        }
+        if self.show_terminal {
+            if show_editor {
+                match self.splitter(ui, terminal_left - 1.0, body, Split::Terminal, c) {
+                    Some(Drag::Reset) => store(ui, TERMINAL_KEY, TERMINAL_DEFAULT),
+                    Some(Drag::To(px)) => store(ui, TERMINAL_KEY, ((body.right() - px) / body.width() * 100.0).clamp(TERMINAL_RANGE.0, TERMINAL_RANGE.1)),
+                    None => {}
+                }
+            }
+            let rect = Rect::from_min_max(egui::pos2(terminal_left, body.top()), body.max);
+            let mut term_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
+            term_ui.set_clip_rect(rect);
+            if self.terminals.ui(&mut term_ui, rect, c) {
+                self.show_terminal = false;
+            }
+        }
         ui.advance_cursor_after_rect(body);
     }
 
-    fn splitter(&mut self, ui: &mut Ui, x: f32, body: Rect, c: &Colors) -> Option<f32> {
+    fn splitter(&mut self, ui: &mut Ui, x: f32, body: Rect, which: Split, c: &Colors) -> Option<Drag> {
         let line = Rect::from_min_size(egui::pos2(x, body.top()), vec2(1.0, body.height()));
         let grip = line.expand2(vec2(5.0, 0.0));
-        let r = ui.interact(grip, Id::unique(("studio-tree-splitter", &self.site.id)), Sense::click_and_drag());
+        let salt = if which == Split::Tree { "studio-tree-splitter" } else { "studio-terminal-splitter" };
+        let r = ui.interact(grip, Id::unique((salt, &self.site.id)), Sense::click_and_drag());
         r.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Splitter, true, "Drag to resize · double-click to reset"));
-        self.dragging = r.dragged();
-        let lit = r.hovered() || self.dragging;
-        ui.painter().rect_filled(line, 0.0, if self.dragging { c.led } else { c.line });
-        if lit {
+        if r.dragged() {
+            self.dragging = Some(which);
+        } else if self.dragging == Some(which) {
+            self.dragging = None;
+        }
+        let dragging = self.dragging == Some(which);
+        ui.painter().rect_filled(line, 0.0, if dragging { c.led } else { c.line });
+        if r.hovered() || dragging {
             ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeColumn);
             ui.painter().rect_filled(Rect::from_center_size(line.center(), vec2(3.0, body.height())), 0.0, c.led.gamma_multiply(0.7));
         }
         if r.double_clicked() {
-            return Some(TREE_DEFAULT);
+            return Some(Drag::Reset);
         }
-        let pointer = r.interact_pointer_pos().filter(|_| self.dragging)?;
-        Some((pointer.x - body.left()).clamp(TREE_RANGE.0, TREE_RANGE.1))
+        r.interact_pointer_pos().filter(|_| dragging).map(|p| Drag::To(p.x))
     }
 }
 
@@ -429,7 +509,13 @@ impl Windows {
     }
 
     pub fn show(&mut self, ctx: &egui::Context) {
-        self.open.retain(|_, s| !s.lock().unwrap_or_else(|p| p.into_inner()).closed);
+        self.open.retain(|_, s| {
+            let mut s = s.lock().unwrap_or_else(|p| p.into_inner());
+            if s.closed {
+                s.terminals.close_all();
+            }
+            !s.closed
+        });
         if self.icon.is_none() && !self.open.is_empty() {
             self.icon = eframe::icon_data::from_png_bytes(crate::ICON_PNG).ok().map(Arc::new);
         }

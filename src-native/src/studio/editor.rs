@@ -307,6 +307,9 @@ pub struct Editor {
     pub format_on_save: bool,
     installing: Option<(String, Receiver<AppResult<String>>)>,
     install_error: Option<String>,
+    pub dismissable: bool,
+    pub dismissed: bool,
+    pub shortcuts: bool,
 }
 
 const FORMAT_ON_SAVE: &str = "zenv.studio.formatOnSave";
@@ -314,7 +317,7 @@ const FORMAT_ON_SAVE: &str = "zenv.studio.formatOnSave";
 impl Editor {
     pub fn new(ctx: &egui::Context) -> Self {
         let format_on_save = ctx.data_mut(|d| d.get_persisted::<bool>(Id::unique(FORMAT_ON_SAVE))).unwrap_or(false);
-        Self { docs: Vec::new(), active: None, scroll_tab: false, closing: None, format_on_save, installing: None, install_error: None }
+        Self { docs: Vec::new(), active: None, scroll_tab: false, closing: None, format_on_save, installing: None, install_error: None, dismissable: false, dismissed: false, shortcuts: true }
     }
 
     pub fn open(&mut self, root: &Path, path: &str) {
@@ -357,7 +360,11 @@ impl Editor {
             ctx.request_repaint_after(POLL);
         }
         self.poll_install(env, &ctx);
+        let shortcuts = self.shortcuts;
         let (save, format, find) = ui.input_mut(|i| {
+            if !shortcuts {
+                return (false, false, false);
+            }
             (
                 i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::S)),
                 i.consume_shortcut(&KeyboardShortcut::new(Modifiers::SHIFT | Modifiers::ALT, Key::F)),
@@ -409,6 +416,9 @@ impl Editor {
                     if shut {
                         close = Some((d.path.clone(), d.dirty()));
                     }
+                }
+                if self.docs.is_empty() && self.dismissable && empty_tab(ui, c) {
+                    self.dismissed = true;
                 }
             });
         });
@@ -579,6 +589,25 @@ fn tab(ui: &mut Ui, d: &Doc, scroll: bool, active: bool, c: &Colors) -> (bool, b
     resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Tab, true, active, name));
     let middle = resp.clicked_by(egui::PointerButton::Middle);
     (resp.clicked() && !close.clicked(), close.clicked() || middle)
+}
+
+fn empty_tab(ui: &mut Ui, c: &Colors) -> bool {
+    let galley = ui.painter().layout_no_wrap("Empty editor".to_owned(), FontId::proportional(12.0), c.muted);
+    let (rect, _) = ui.allocate_exact_size(vec2(12.0 + galley.size().x + 6.0 + 20.0 + 4.0, 36.0), Sense::hover());
+    let painter = ui.painter();
+    painter.rect_filled(rect, 0.0, c.raised.gamma_multiply(0.7));
+    painter.rect_filled(Rect::from_min_size(rect.min, vec2(rect.width(), 2.0)), 0.0, c.led);
+    painter.vline(rect.right() - 0.5, rect.y_range(), Stroke::new(1.0, c.line));
+    painter.galley(egui::pos2(rect.left() + 12.0, rect.center().y - galley.size().y / 2.0), galley, c.muted);
+    let close_rect = Rect::from_center_size(egui::pos2(rect.right() - 4.0 - 10.0, rect.center().y), vec2(20.0, 20.0));
+    let close = ui.interact(close_rect, ui.scope_id().with("empty-editor-close"), Sense::click());
+    close.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, "Close editor"));
+    let color = if close.hovered() { c.text } else { c.muted };
+    if close.hovered() {
+        ui.painter().rect_filled(close_rect, 2.0, c.raised);
+    }
+    ui.painter().text(close_rect.center(), egui::Align2::CENTER_CENTER, lucide::X, FontId::new(12.0, crate::theme::icons()), color);
+    close.on_hover_text("Close editor (Claude Code takes the full width until a file is opened)").clicked()
 }
 
 fn empty(ui: &mut Ui, c: &Colors) {

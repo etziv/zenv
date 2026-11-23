@@ -156,6 +156,13 @@ fn fonts() -> FontDefinitions {
     defs.families.insert(mono_bold(), family("jetbrains-bold"));
     defs.families.insert(display(), family("chakra"));
     defs.families.insert(icons(), vec!["lucide".to_owned()]);
+    let root = std::env::var_os("SystemRoot").map_or_else(|| std::path::PathBuf::from(r"C:\Windows"), std::path::PathBuf::from);
+    if let Ok(bytes) = std::fs::read(root.join(r"Fonts\seguisym.ttf")) {
+        defs.font_data.insert("segoe-symbol".to_owned(), Arc::new(FontData::from_owned(bytes)));
+        for f in [FontFamily::Monospace, mono_bold()] {
+            defs.families.entry(f).or_default().push("segoe-symbol".to_owned());
+        }
+    }
     defs
 }
 
